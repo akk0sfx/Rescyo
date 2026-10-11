@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Логотип Rescyo: спасательный круг, верхний сегмент которого возвращается на место">
+<img src="assets/brand/logo.svg" width="132" alt="Логотип Rescyo: спасательный круг, правый верхний сегмент которого возвращается на место">
 
 # Rescyo
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Rescyo logo: a rescue ring whose top segment is returning to its place">
+<img src="assets/brand/logo.svg" width="132" alt="Rescyo logo: a rescue ring whose top-right segment is returning to its place">
 
 # Rescyo
 

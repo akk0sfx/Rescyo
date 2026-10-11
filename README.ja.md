@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Rescyo のロゴ：上部のセグメントが元の位置に戻りつつある浮き輪">
+<img src="assets/brand/logo.svg" width="132" alt="Rescyo のロゴ：右上のセグメントが元の位置に戻りつつある浮き輪">
 
 # Rescyo レスキオ
 
