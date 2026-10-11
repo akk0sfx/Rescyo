@@ -94,7 +94,10 @@ pub enum OpenError {
     Invalid { format: ContainerFormat, reason: String },
     /// A valid container that uses a feature Rescyo cannot read yet.
     #[error("{format}: {feature} is not supported")]
-    Unsupported { format: ContainerFormat, feature: String },
+    Unsupported {
+        format: ContainerFormat,
+        feature: String,
+    },
     /// A differencing image whose parent (backing) image cannot be found.
     #[error("{format}: parent image not found (tried {tried})")]
     ParentMissing { format: ContainerFormat, tried: String },
@@ -362,8 +365,11 @@ pub(crate) trait Layout: Send + Sync + fmt::Debug {
 pub(crate) struct ParentRef {
     pub candidates: Vec<PathBuf>,
     /// Checks the opened parent (e.g. its unique id); an error becomes a note.
-    pub check: Option<Box<dyn Fn(&ContainerInfo) -> Result<(), String>>>,
+    pub check: Option<ParentCheck>,
 }
+
+/// A check of an opened parent image; its error message becomes a note.
+pub(crate) type ParentCheck = Box<dyn Fn(&ContainerInfo) -> Result<(), String>>;
 
 /// What a format's `open` returns.
 pub(crate) struct Opened {
@@ -506,8 +512,7 @@ pub(crate) fn inflate_raw(data: &[u8], limit: usize) -> Result<Vec<u8>, ReadErro
 /// Decompresses a zlib stream (VMDK grains, EWF chunks) into at most `limit` bytes; the
 /// stream's own Adler-32 is verified.
 pub(crate) fn inflate_zlib(data: &[u8], limit: usize) -> Result<Vec<u8>, ReadError> {
-    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(data, limit)
-        .map_err(|_| ReadError::Media)
+    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(data, limit).map_err(|_| ReadError::Media)
 }
 
 /// The directory an image lives in, for resolving relative parent and extent paths.
@@ -527,9 +532,8 @@ pub(crate) fn foreign_path_candidates(dir: &Path, written: &str) -> Vec<PathBuf>
     let unified = s.replace('\\', "/");
     let mut out = Vec::new();
     let bytes = unified.as_bytes();
-    let drive_letter = bytes.len() > 2
-        && bytes.first().is_some_and(u8::is_ascii_alphabetic)
-        && bytes.get(1) == Some(&b':');
+    let drive_letter =
+        bytes.len() > 2 && bytes.first().is_some_and(u8::is_ascii_alphabetic) && bytes.get(1) == Some(&b':');
     let as_written = Path::new(&unified);
     if as_written.is_absolute() {
         out.push(as_written.to_path_buf());
@@ -595,8 +599,14 @@ mod tests {
     fn foreign_paths_become_local_candidates() {
         let dir = Path::new("/imgs");
         #[cfg(unix)]
-        assert_eq!(foreign_path_candidates(dir, r"C:\vm\base.vhd"), vec![dir.join("base.vhd")]);
-        assert_eq!(foreign_path_candidates(dir, ".\\base.vhd"), vec![dir.join("base.vhd")]);
+        assert_eq!(
+            foreign_path_candidates(dir, r"C:\vm\base.vhd"),
+            vec![dir.join("base.vhd")]
+        );
+        assert_eq!(
+            foreign_path_candidates(dir, ".\\base.vhd"),
+            vec![dir.join("base.vhd")]
+        );
         assert_eq!(
             foreign_path_candidates(dir, "file://localhost/Users/me/base.vhd"),
             vec![PathBuf::from("/Users/me/base.vhd"), dir.join("base.vhd")]

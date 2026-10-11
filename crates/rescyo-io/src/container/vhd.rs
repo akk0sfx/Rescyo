@@ -8,11 +8,10 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use super::{
-    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of,
-    foreign_path_candidates,
+    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of, foreign_path_candidates,
 };
 use crate::ReadError;
-use crate::bytes::{be16_at, be32_at, be64_at, bytes_at, slice_at};
+use crate::bytes::{be32_at, be64_at, bytes_at, slice_at};
 
 const F: ContainerFormat = ContainerFormat::Vhd;
 const SECTOR: u64 = 512;
@@ -135,7 +134,10 @@ fn open_sparse(
     let entries = field(be32_at(&h, 28).map(u64::from))?;
     let block_size = field(be32_at(&h, 32).map(u64::from))?;
     if !block_size.is_power_of_two() || block_size < SECTOR || block_size > u64::from(MAX_BLOCK) {
-        return Err(OpenError::invalid(F, format!("implausible block size {block_size}")));
+        return Err(OpenError::invalid(
+            F,
+            format!("implausible block size {block_size}"),
+        ));
     }
     let needed = footer.current_size.div_ceil(block_size);
     if entries < needed {
@@ -150,8 +152,10 @@ fn open_sparse(
         .read_vec(table_offset, bat_bytes)
         .map_err(|_| OpenError::invalid(F, "block allocation table is outside the file"))?;
     let bat: Vec<u32> = raw
-        .chunks_exact(4)
-        .filter_map(|c| be32_at(c, 0))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_be_bytes(*c))
         .collect();
     let bitmap = (block_size / SECTOR).div_ceil(8).next_multiple_of(SECTOR);
 
@@ -185,8 +189,7 @@ fn parent_ref(path: &Path, host: &HostFile, h: &[u8]) -> Result<ParentRef, OpenE
     let mut by_priority: Vec<(u8, String)> = Vec::new();
     for i in 0..8usize {
         let e = 576 + i * 24;
-        let (Some(code), Some(len), Some(off)) =
-            (be32_at(h, e), be32_at(h, e + 8), be64_at(h, e + 16))
+        let (Some(code), Some(len), Some(off)) = (be32_at(h, e), be32_at(h, e + 8), be64_at(h, e + 16))
         else {
             continue;
         };
@@ -220,8 +223,10 @@ fn parent_ref(path: &Path, host: &HostFile, h: &[u8]) -> Result<ParentRef, OpenE
     // The header also stores the parent's file name (UTF-16BE, 512 bytes).
     if let Some(name) = slice_at(h, 64, 512) {
         let units: Vec<u16> = name
-            .chunks_exact(2)
-            .filter_map(|c| be16_at(c, 0))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| u16::from_be_bytes(*c))
             .take_while(|&u| u != 0)
             .collect();
         let name = String::from_utf16_lossy(&units);
@@ -261,8 +266,10 @@ fn read_unique_id(path: &Path) -> Option<[u8; 16]> {
 
 fn utf16le(bytes: &[u8]) -> String {
     let units: Vec<u16> = bytes
-        .chunks_exact(2)
-        .map(|c| u16::from_le_bytes([c.first().copied().unwrap_or(0), c.get(1).copied().unwrap_or(0)]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| u16::from_le_bytes(*c))
         .take_while(|&u| u != 0)
         .collect();
     String::from_utf16_lossy(&units)
@@ -479,7 +486,11 @@ pub(crate) mod tests {
         bytes[n - 500] ^= 0xFF;
         let p = file_in(dir.path(), "dyn.vhd", &bytes);
         let (src, info) = open_image(&p, 512, None).unwrap();
-        assert!(info.notes.iter().any(|n| n.contains("copy at the start")), "{:?}", info.notes);
+        assert!(
+            info.notes.iter().any(|n| n.contains("copy at the start")),
+            "{:?}",
+            info.notes
+        );
         assert_eq!(read_all(src.as_ref()), pattern(4096));
     }
 

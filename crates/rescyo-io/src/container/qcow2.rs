@@ -8,8 +8,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of,
-    foreign_path_candidates, inflate_raw,
+    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of, foreign_path_candidates,
+    inflate_raw,
 };
 use crate::ReadError;
 use crate::bytes::{be32_at, be64_at, slice_at};
@@ -92,13 +92,23 @@ pub(super) fn open(path: &Path) -> Result<Opened, OpenError> {
     let l2_entries = cluster / 8;
     let needed = size.div_ceil(cluster).div_ceil(l2_entries);
     if l1_size < needed {
-        notes.push(format!("L1 table has {l1_size} entries for {needed}; the rest reads as unallocated"));
+        notes.push(format!(
+            "L1 table has {l1_size} entries for {needed}; the rest reads as unallocated"
+        ));
     }
     let l1_len = l1_size.min(needed).min(host.len / 8);
     let raw = host
-        .read_vec(l1_offset, usize::try_from(l1_len * 8).map_err(|_| OpenError::invalid(F, "huge L1"))?)
+        .read_vec(
+            l1_offset,
+            usize::try_from(l1_len * 8).map_err(|_| OpenError::invalid(F, "huge L1"))?,
+        )
         .map_err(|_| OpenError::invalid(F, "L1 table is outside the file"))?;
-    let l1: Vec<u64> = raw.chunks_exact(8).filter_map(|c| be64_at(c, 0)).collect();
+    let l1: Vec<u64> = raw
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .map(|c| u64::from_be_bytes(*c))
+        .collect();
 
     let parent = if backing_offset != 0 && backing_size != 0 {
         let len = usize::try_from(backing_size.min(1023)).unwrap_or(1023);
@@ -151,12 +161,18 @@ impl Qcow2Layout {
         {
             return Ok(Arc::clone(t));
         }
-        if at % self.cluster() != 0 {
+        if !at.is_multiple_of(self.cluster()) {
             return Err(ReadError::Media);
         }
         let mut raw = vec![0u8; usize::try_from(self.cluster()).map_err(|_| ReadError::Media)?];
         files.first().ok_or(ReadError::Media)?.read(at, &mut raw)?;
-        let t = Arc::new(raw.chunks_exact(8).filter_map(|c| be64_at(c, 0)).collect::<Vec<_>>());
+        let t = Arc::new(
+            raw.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|c| u64::from_be_bytes(*c))
+                .collect::<Vec<_>>(),
+        );
         if let Ok(mut c) = self.l2_cache.lock() {
             if c.len() >= 32 {
                 c.remove(0);
@@ -215,10 +231,16 @@ impl Layout for Qcow2Layout {
         if host == 0 {
             return Ok((unallocated, run));
         }
-        if host % cluster != 0 {
+        if !host.is_multiple_of(cluster) {
             return Ok((Piece::Bad, run));
         }
-        Ok((Piece::Data { file: 0, offset: host + within }, run))
+        Ok((
+            Piece::Data {
+                file: 0,
+                offset: host + within,
+            },
+            run,
+        ))
     }
 
     fn decode(&self, files: &[HostFile], chunk: u64) -> Result<Vec<u8>, ReadError> {
@@ -304,7 +326,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let a = pattern(4096);
         let b: Vec<u8> = pattern(4096).into_iter().rev().collect();
-        let img = build(&[C::Data(a.clone()), C::Compressed(b.clone()), C::Zero, C::Unallocated], None);
+        let img = build(
+            &[
+                C::Data(a.clone()),
+                C::Compressed(b.clone()),
+                C::Zero,
+                C::Unallocated,
+            ],
+            None,
+        );
         let p = file_in(dir.path(), "disk.qcow2", &img);
         let (src, info) = open_image(&p, 512, None).unwrap();
         assert_eq!(info.format, ContainerFormat::Qcow2);
@@ -320,7 +350,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         file_in(dir.path(), "base.raw", &pattern(8192));
         let mine = vec![0x5Au8; 4096];
-        let img = build(&[C::Data(mine.clone()), C::Unallocated, C::Unallocated], Some("base.raw"));
+        let img = build(
+            &[C::Data(mine.clone()), C::Unallocated, C::Unallocated],
+            Some("base.raw"),
+        );
         let p = file_in(dir.path(), "top.qcow2", &img);
         let (src, info) = open_image(&p, 512, None).unwrap();
         assert_eq!(info.files.len(), 2);
@@ -367,10 +400,16 @@ mod tests {
         let mut img = build(&[C::Zero], None);
         img[32..36].copy_from_slice(&1u32.to_be_bytes());
         let p = file_in(dir.path(), "enc.qcow2", &img);
-        assert!(matches!(open_image(&p, 512, None), Err(OpenError::Unsupported { .. })));
+        assert!(matches!(
+            open_image(&p, 512, None),
+            Err(OpenError::Unsupported { .. })
+        ));
         let mut img = build(&[C::Zero], None);
         img[72..80].copy_from_slice(&(1u64 << 40).to_be_bytes());
         let p = file_in(dir.path(), "feat.qcow2", &img);
-        assert!(matches!(open_image(&p, 512, None), Err(OpenError::Unsupported { .. })));
+        assert!(matches!(
+            open_image(&p, 512, None),
+            Err(OpenError::Unsupported { .. })
+        ));
     }
 }
