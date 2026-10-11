@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-12
+
+Second alpha: image a dying disk before touching it, find partitions the table lost, and read the NTFS files Windows compresses.
+
 ### Added
 
 - **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
@@ -17,6 +21,13 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Changed
 
 - Sessions use schema 2 (compressed extents, named streams); Rescyo 0.1 refuses to open them rather than misreading compressed data. Schema 1 sessions still open.
+
+### Known limitations
+
+- Still no signed binaries: build from source or take CI artifacts until code signing is in place.
+- EFS-encrypted files, WOF files backed by an external WIM, ext4/HFS+/APFS/Btrfs, disk-image formats other than raw, carving and the GUI arrive in later versions (see the roadmap).
+- Partition tables are found and reported, never rewritten; table repair is planned for the expert mode in v0.4.
+- Translations other than English and Russian await native review.
 
 ## [0.1.0] — 2026-10-11
 
@@ -41,4 +52,5 @@ First alpha: a command-line tool that recovers whole folder trees from FAT12/16/
 - NTFS compressed and encrypted files, alternate data streams, ext4/HFS+/APFS/Btrfs, imaging, carving and the GUI arrive in later versions (see the roadmap).
 - Translations other than English and Russian await native review.
 
+[0.2.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.1.0
