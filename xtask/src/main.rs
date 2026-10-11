@@ -145,7 +145,7 @@ fn gate1() -> Result<()> {
                 );
             }
             let rec = Command::new(&bin)
-                .args(["recover", "--deleted", "--json"])
+                .args(["recover", "--deleted", "--streams", "--json"])
                 .arg(&session)
                 .arg("--to")
                 .arg(&out)

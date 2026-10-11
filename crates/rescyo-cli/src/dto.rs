@@ -147,6 +147,7 @@ pub struct EntryRow {
     pub volume: i64,
     pub path: String,
     /// `file` or `directory`.
+    /// `file`, `directory` or `stream` (a named stream, shown as `file:stream`).
     pub kind: String,
     /// `live` or `deleted`.
     pub state: String,

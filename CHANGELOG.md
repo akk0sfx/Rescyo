@@ -7,8 +7,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Added
 
 - **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
+- **NTFS compression**: files compressed by NTFS (LZNT1) are rebuilt one compression unit at a time, including deleted ones; damage inside a unit marks only that unit unreadable.
+- **WOF compression** (`compact /exe:xpress4k|xpress8k|xpress16k|lzx`, used by Windows 10/11 for system files): XPRESS Huffman and LZX decoders written from the public specifications, checked against wimlib.
+- **Named streams** (NTFS alternate data streams): `ls --streams` and `recover --streams` show and recover them as `file:stream` (`file_stream` on Windows and macOS targets).
+- Encrypted (EFS) files are reported as unreadable without the user's key instead of being copied as ciphertext.
 - **Lost partition search**: `rescyo partitions` reads a disk or image once for FAT, exFAT and NTFS boot sectors (primary and backup), confirms each against the volume's FAT, root directory or MFT, and lists what it finds as listed, lost, conflicting, nested or unpartitioned, plus table entries with no volume. Nothing is written; deep scans use the same search and report lost partitions.
 - `scan`, `import-dmde` and `recover` take `--map` so the unread areas of an image count as unreadable sectors; `recover` no longer re-reads sectors its session already found unreadable.
+
+### Changed
+
+- Sessions use schema 2 (compressed extents, named streams); Rescyo 0.1 refuses to open them rather than misreading compressed data. Schema 1 sessions still open.
 
 ## [0.1.0] — 2026-10-11
 

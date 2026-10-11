@@ -44,6 +44,9 @@ pub struct ExpectedFile {
     pub in_root: bool,
     pub fragmented: Option<bool>,
     pub mtime: i64,
+    /// A named data stream (`file:stream`), not a file.
+    #[serde(default)]
+    pub stream: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]

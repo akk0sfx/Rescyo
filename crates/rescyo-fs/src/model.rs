@@ -126,6 +126,9 @@ pub enum Parent {
 pub enum EntryKind {
     File,
     Directory,
+    /// A named data stream of a file (NTFS alternate data stream), named `file:stream` and
+    /// placed beside its file.
+    Stream,
 }
 
 /// Whether the file system still considers the entry allocated.
@@ -175,12 +178,32 @@ pub enum Extent {
     Zero { len: u64 },
     /// Bytes stored inside the metadata itself (NTFS resident data).
     Inline { data: Vec<u8> },
+    /// `len` bytes that are `stored` in compressed form and must be decoded with `codec`.
+    Encoded {
+        codec: Codec,
+        stored: Vec<Extent>,
+        len: u64,
+    },
+}
+
+/// How an [`Extent::Encoded`] is compressed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Codec {
+    /// One NTFS compression unit in LZNT1.
+    Lznt1,
+    /// A whole WOF-compressed stream (chunk table and chunks) in XPRESS Huffman, 4 KiB chunks.
+    WofXpress4k,
+    WofXpress8k,
+    WofXpress16k,
+    /// A whole WOF-compressed stream in LZX, 32 KiB chunks.
+    WofLzx,
 }
 
 impl Extent {
     pub fn len(&self) -> u64 {
         match self {
-            Self::Disk { len, .. } | Self::Zero { len } => *len,
+            Self::Disk { len, .. } | Self::Zero { len } | Self::Encoded { len, .. } => *len,
             Self::Inline { data } => data.len() as u64,
         }
     }

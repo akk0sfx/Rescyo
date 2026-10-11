@@ -70,6 +70,10 @@ A confirmed directory start used to begin tree reconstruction without a full sca
 A file or directory discovered in a Session, live or deleted, with its name, path, size, timestamps and byte extents.
 _Avoid_: file record, item, node, object
 
+**Named stream**:
+A second, named content of a file (an NTFS alternate data stream), listed and recovered as `file:stream` beside its file, and only when asked for.
+_Avoid_: fork, ADS (in user-facing text)
+
 **Assembly method**:
 How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.
 _Avoid_: reliability, confidence, source

@@ -386,7 +386,7 @@ impl<'a> Walker<'a> {
         }
         self.emitted += 1;
         match e.kind {
-            EntryKind::File => self.stats.files += 1,
+            EntryKind::File | EntryKind::Stream => self.stats.files += 1,
             EntryKind::Directory => self.stats.dirs += 1,
         }
         if e.state == EntryState::Deleted {
