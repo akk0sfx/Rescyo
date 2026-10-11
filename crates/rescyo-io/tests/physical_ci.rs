@@ -18,7 +18,10 @@ fn physical_disk_reads_match_the_backing_image() {
     let disk = PhysicalDisk::open(&device).expect("open device read-only");
     let img = ImageSource::open(image.as_ref(), 512).expect("open image");
     let g = disk.geometry();
-    assert!(g.size >= img.geometry().size.min(8 << 20), "device smaller than expected: {g:?}");
+    assert!(
+        g.size >= img.geometry().size.min(8 << 20),
+        "device smaller than expected: {g:?}"
+    );
 
     let disk = GuardedReader::new(Arc::new(disk), ReadPolicy::default());
     let img = GuardedReader::new(Arc::new(img), ReadPolicy::default());
