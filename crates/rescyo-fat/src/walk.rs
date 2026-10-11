@@ -108,6 +108,14 @@ pub fn walk(
         }
     };
     w.ctx.codepage = cp;
+    if geo.is_exfat() {
+        w.ex_seeds = opts
+            .seeds
+            .iter()
+            .filter_map(|s| u32::try_from(s.cluster).ok())
+            .take(65_536)
+            .collect();
+    }
     w.stats.codepage = Some(cp);
 
     match geo.root {
@@ -149,6 +157,8 @@ struct Walker<'a> {
     visited: HashSet<u32>,
     /// Every cluster read as part of some directory (first and continuation clusters).
     dir_clusters: HashSet<u32>,
+    /// exFAT directory clusters found by a scan: candidates for stitching split entry sets.
+    ex_seeds: Vec<u32>,
     /// Entry ids of walked directories by first cluster.
     dir_ids: HashMap<u32, EntryId>,
     /// Names seen for directory clusters that were not walked from their entry.
@@ -192,6 +202,7 @@ impl<'a> Walker<'a> {
             jobs: Vec::new(),
             visited: HashSet::new(),
             dir_clusters: HashSet::new(),
+            ex_seeds: Vec::new(),
             dir_ids: HashMap::new(),
             names: HashMap::new(),
             emitted: 0,
@@ -308,9 +319,34 @@ impl<'a> Walker<'a> {
                     if ended && known_len.is_none() {
                         break;
                     }
+                    // A split entry set verified by its checksum is stronger evidence than
+                    // adjacency, so it is tried first.
+                    if next.is_none()
+                        && self.geo.is_exfat()
+                        && let Some(t) = exdir::incomplete_tail(&data)
+                    {
+                        let tail = data.get(t..).unwrap_or_default().to_vec();
+                        for s in self.ex_seeds.clone() {
+                            if seen.contains(&s) || self.dir_clusters.contains(&s) {
+                                continue;
+                            }
+                            if let Some(d) = self.read_cluster(s)?
+                                && exdir::completes_set(&tail, &d, &self.ex)
+                            {
+                                self.sink.note(Note::DirectoryStitched {
+                                    cluster: u64::from(s),
+                                });
+                                next = Some((s, d));
+                                break;
+                            }
+                        }
+                    }
                     if next.is_none() && (cur_data_tail_used || known_len.is_some()) {
                         let v = cur + 1;
+                        // Never run into the first cluster of a directory known to be elsewhere.
                         if !seen.contains(&v)
+                            && !self.visited.contains(&v)
+                            && !self.dir_clusters.contains(&v)
                             && let Some(d) = self.read_cluster(v)?
                             && self.looks_like_dir(&d, true)
                         {
@@ -667,7 +703,8 @@ impl<'a> Walker<'a> {
     /// Walks seeds that the tree did not reach and hangs them where their parent is known, or
     /// under Lost folders.
     fn lost_folders(&mut self, seeds: &[DirectorySeed]) -> Result<(), WalkError> {
-        let mut parent_of: BTreeMap<u32, (u32, SeedOrigin)> = BTreeMap::new();
+        // Parent cluster as recorded on disk; `None` where the format keeps no back link (exFAT).
+        let mut parent_of: BTreeMap<u32, (Option<u32>, SeedOrigin)> = BTreeMap::new();
         let mut rejected = 0u64;
         for s in seeds {
             self.check()?;
@@ -684,12 +721,19 @@ impl<'a> Walker<'a> {
             };
             let parent = if self.geo.is_exfat() {
                 exdir::looks_like_exdir(&d, &self.ex, true)
-                    .then(|| s.parent.and_then(|p| u32::try_from(p).ok()).unwrap_or(0))
+                    .then(|| s.parent.and_then(|p| u32::try_from(p).ok()))
             } else {
-                // The cluster's own `..` is the truth; a hint's claimed parent is not.
-                dir::dir_start(&d, self.ctx.fat32)
-                    .filter(|(me, _)| *me == c)
-                    .map(|(_, p)| p)
+                // The cluster's own `..` is the truth; a hint's claimed parent is not. A seed
+                // without a parent is a fragment: accepted only if it is entries throughout.
+                match s.parent {
+                    None => (dir::dir_start(&d, self.ctx.fat32).is_none()
+                        && dir::score(&d, &self.ctx).1 == 0
+                        && dir::looks_like_dir(&d, &self.ctx, true))
+                    .then_some(None),
+                    Some(_) => dir::dir_start(&d, self.ctx.fat32)
+                        .filter(|(me, _)| *me == c)
+                        .map(|(_, p)| Some(p)),
+                }
             };
             match parent {
                 Some(p) => {
@@ -718,7 +762,9 @@ impl<'a> Walker<'a> {
             let mut top = c;
             for _ in 0..1000 {
                 match parent_of.get(&top) {
-                    Some(&(p, _)) if p != top && parent_of.contains_key(&p) && !self.visited.contains(&p) => {
+                    Some(&(Some(p), _))
+                        if p != top && parent_of.contains_key(&p) && !self.visited.contains(&p) =>
+                    {
                         top = p
                     }
                     _ => break,
@@ -727,18 +773,21 @@ impl<'a> Walker<'a> {
             let Some(&(p, origin)) = parent_of.get(&top) else {
                 continue;
             };
-            let parent = if p == 0 || Some(p) == root_cluster {
-                if matches!(self.geo.root, RootDir::Unknown) {
-                    Parent::Lost { parent_ref: 0 }
-                } else {
-                    Parent::Root
+            let parent = match p {
+                None => Parent::Lost { parent_ref: 0 },
+                Some(p) if p == 0 || Some(p) == root_cluster => {
+                    if matches!(self.geo.root, RootDir::Unknown) {
+                        Parent::Lost { parent_ref: 0 }
+                    } else {
+                        Parent::Root
+                    }
                 }
-            } else if let Some(&id) = self.dir_ids.get(&p) {
-                Parent::Entry(id)
-            } else {
-                Parent::Lost {
-                    parent_ref: u64::from(p),
-                }
+                Some(p) => match self.dir_ids.get(&p) {
+                    Some(&id) => Parent::Entry(id),
+                    None => Parent::Lost {
+                        parent_ref: u64::from(p),
+                    },
+                },
             };
             let name = self
                 .names

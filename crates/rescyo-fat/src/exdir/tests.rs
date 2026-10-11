@@ -98,7 +98,7 @@ fn root_system_entries_are_reported() {
     assert_eq!(e.len(), 1);
     assert_eq!(info.label.as_deref(), Some("RESCYO"));
     assert_eq!(info.bitmap, Some((2, 1024)));
-    assert_eq!(info.upcase, Some((3, 5836)));
+    assert_eq!(info.upcase, Some((3, 5836, 0)));
     assert!(looks_like_exdir(&d, &ctx(), true));
     assert!(!looks_like_exdir(&[0x5Au8; 4096], &ctx(), false));
 }

@@ -272,6 +272,9 @@ pub enum Note {
     NoFatTable,
     /// A directory continued into the next cluster without allocation-table evidence.
     DirectoryContinuedHeuristically { cluster: u64 },
+    /// A directory continued into a non-adjacent cluster because an entry set split across the
+    /// boundary verified by its checksum.
+    DirectoryStitched { cluster: u64 },
     /// A cycle or out-of-range link was cut.
     ChainCut { cluster: u64 },
     /// A limit from [`crate::Limits`] stopped work.

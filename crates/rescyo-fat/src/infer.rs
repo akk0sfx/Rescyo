@@ -78,7 +78,7 @@ pub fn infer_volumes(r: &GuardedReader, scan: &DeepScan) -> Result<Vec<Found>, G
         merge(&mut found, f);
     }
 
-    found.sort_by(|a, b| b.score.cmp(&a.score));
+    found.sort_by_key(|f| std::cmp::Reverse(f.score));
     Ok(found)
 }
 
@@ -155,7 +155,8 @@ fn fat_votes(scan: &DeepScan) -> Vec<(u32, u64, bool, u64)> {
         .into_iter()
         .filter_map(|((c, d), (w, n))| {
             let v = w.max(n);
-            (v >= 3 && v * 4 >= best).then_some((c, d, w >= n, v))
+            // Below cluster 65 536 both readings agree; only a strict majority proves FAT32.
+            (v >= 3 && v * 4 >= best).then_some((c, d, w > n, v))
         })
         .collect();
     out.sort_by(|a, b| b.3.cmp(&a.3).then(a.0.cmp(&b.0)));
@@ -217,32 +218,58 @@ pub fn geometry_from_grid(
             },
         ];
         fs = Some(FsKind::Fat32);
-    } else if let Some(&a) = f32s.iter().max() {
-        fats = vec![FatCopy {
-            offset: a,
-            len: data - a,
-        }];
-        fs = Some(FsKind::Fat32);
     }
 
     // FAT12/16: two copies, then a fixed root region whose end is the data area.
     if fs.is_none() {
-        let small: Vec<u64> = heads
+        let small: Vec<(u64, u8)> = heads
             .iter()
             .filter(|h| h.fat12 || h.fat16)
-            .map(|h| h.offset)
+            .map(|h| (h.offset, h.media))
             .collect();
-        let pair = small
+        let mut pairs: Vec<(u64, u64, u64, u64, u64, u32)> = Vec::new();
+        for &(a, ma) in &small {
+            for &(b, mb) in &small {
+                let Some(len) = b.checked_sub(a).filter(|l| *l > 0) else {
+                    continue;
+                };
+                let Some(root_off) = b.checked_add(len) else {
+                    continue;
+                };
+                let Some(root_len) = data.checked_sub(root_off) else {
+                    continue;
+                };
+                if root_len == 0 || !root_len.is_multiple_of(512) || root_len > 65_536 * 32 {
+                    continue;
+                }
+                // Sectors full of end marks inside a table also match the signature: a real
+                // pair starts with a media byte and has a directory at the root region start.
+                let media = u32::from(ma != 0xFF) + u32::from(mb != 0xFF);
+                pairs.push((a, b, len, root_off, root_len, media));
+            }
+        }
+        pairs.sort_by_key(|p| std::cmp::Reverse((p.5, p.2)));
+        let ctx = DirContext {
+            fat32: false,
+            max_cluster: 0xFFF6,
+            max_size: u64::MAX,
+            codepage: Codepage::Cp437,
+        };
+        let mut pair = None;
+        for p in pairs.iter().take(64) {
+            let mut sec = vec![0u8; 512];
+            if r.read(p.3, &mut sec)?.is_clean() && dir::looks_like_dir(&sec, &ctx, true) {
+                pair = Some((p.0, p.1, p.2, p.3, p.4));
+                break;
+            }
+        }
+        // For a lone survivor, a real table start (media byte) beats end-mark sectors.
+        let survivor = small
             .iter()
-            .flat_map(|&a| small.iter().map(move |&b| (a, b)))
-            .filter_map(|(a, b)| {
-                let len = b.checked_sub(a).filter(|l| *l > 0)?;
-                let root_off = b.checked_add(len)?;
-                let root_len = data.checked_sub(root_off)?;
-                (root_len > 0 && root_len.is_multiple_of(512) && root_len <= 65_536 * 32)
-                    .then_some((a, b, len, root_off, root_len))
-            })
-            .max_by_key(|p| p.1);
+            .filter(|h| h.1 != 0xFF)
+            .map(|h| h.0)
+            .max()
+            .or_else(|| small.iter().map(|h| h.0).max());
         if let Some((a, b, len, root_off, root_len)) = pair {
             fats = vec![FatCopy { offset: a, len }, FatCopy { offset: b, len }];
             root = RootDir::Region {
@@ -255,7 +282,39 @@ pub fn geometry_from_grid(
             } else {
                 FsKind::Fat16
             });
+        } else if let Some(b) = survivor
+            && let Some(root_off) = root_region_start(r, b, data)?
+        {
+            // Only one copy survived (usually FAT2 after FAT1 was wiped): the root region
+            // starts where directory-like sectors begin and run unbroken to the data area. The
+            // lost first copy is kept in front so chains from the survivor read as the mirror.
+            let len = root_off - b;
+            fats = match b.checked_sub(len) {
+                Some(a) => vec![FatCopy { offset: a, len }, FatCopy { offset: b, len }],
+                None => vec![FatCopy { offset: b, len }],
+            };
+            root = RootDir::Region {
+                offset: root_off,
+                len: data - root_off,
+            };
+            let count = (end - data) / u64::from(cluster);
+            fs = Some(if count < 4085 {
+                FsKind::Fat12
+            } else {
+                FsKind::Fat16
+            });
         }
+    }
+    // Last resort: a single FAT32 copy in front of the data area (FAT16 heads also pass the
+    // FAT32 signature check, so this comes after every FAT12/16 reading).
+    if fs.is_none()
+        && let Some(&a) = f32s.iter().max()
+    {
+        fats = vec![FatCopy {
+            offset: a,
+            len: data - a,
+        }];
+        fs = Some(FsKind::Fat32);
     }
     for f in &fats {
         evidence.push(Evidence::FatSignature { offset: f.offset });
@@ -319,6 +378,35 @@ pub fn geometry_from_grid(
     }))
 }
 
+/// First sector after `fat` from which every sector up to `data` looks like directory entries
+/// (the first of them strictly so): the start of a FAT12/16 root region.
+fn root_region_start(r: &GuardedReader, fat: u64, data: u64) -> Result<Option<u64>, GuardError> {
+    let len = data.saturating_sub(fat);
+    if !(1024..=64 << 20).contains(&len) {
+        return Ok(None);
+    }
+    let mut buf = vec![0u8; usize::try_from(len).unwrap_or(0)];
+    r.read(fat, &mut buf)?;
+    let ctx = DirContext {
+        fat32: false,
+        max_cluster: 0xFFF6,
+        max_size: u64::MAX,
+        codepage: Codepage::Cp437,
+    };
+    let sectors: Vec<&[u8]> = buf.chunks(512).collect();
+    let mut start = None;
+    // Walk back from the data area while sectors stay directory-like.
+    for (i, s) in sectors.iter().enumerate().rev() {
+        if i == 0 || !dir::looks_like_dir(s, &ctx, false) {
+            break;
+        }
+        if dir::looks_like_dir(s, &ctx, true) {
+            start = Some(i);
+        }
+    }
+    Ok(start.map(|i| fat + 512 * i as u64))
+}
+
 /// exFAT has no `.` entries, so subdirectory pointers inside directory entry sets vote instead:
 /// for the right grid, each pointer lands on a sector that starts a directory.
 fn exfat_from_votes(r: &GuardedReader, scan: &DeepScan) -> Result<Option<Found>, GuardError> {
@@ -353,7 +441,9 @@ fn exfat_from_votes(r: &GuardedReader, scan: &DeepScan) -> Result<Option<Found>,
         return Ok(None);
     }
     let dirs: Vec<u64> = scan.ex_dirs.iter().take(MAX_EX_DIRS).copied().collect();
-    let mut best: Option<(u32, u64, u64)> = None;
+    // Directories are often allocated back to back, so grids shifted by a few clusters collect
+    // votes too. Keep every strong grid and confirm it with the up-case table checksum.
+    let mut grids: Vec<(u32, u64, u64)> = Vec::new();
     for shift in 9..=25u32 {
         let c = 1u64 << shift;
         let mut votes: BTreeMap<u64, u64> = BTreeMap::new();
@@ -365,18 +455,46 @@ fn exfat_from_votes(r: &GuardedReader, scan: &DeepScan) -> Result<Option<Found>,
                 }
             }
         }
-        if let Some((&data, &v)) = votes.iter().max_by_key(|(_, v)| **v)
-            && best.is_none_or(|b| v > b.2)
+        grids.extend(votes.into_iter().map(|(data, v)| (1u32 << shift, data, v)));
+    }
+    let top = grids.iter().map(|g| g.2).max().unwrap_or(0);
+    grids.retain(|g| g.2 >= 2 && g.2 * 2 >= top && g.2 * 3 >= pointers.len() as u64);
+    grids.sort_by_key(|g| std::cmp::Reverse(g.2));
+    grids.truncate(256);
+    let mut upcase = None;
+    for &o in &scan.ex_roots {
+        let mut s = vec![0u8; 512];
+        if r.read(o, &mut s)?.is_clean()
+            && let (_, info) = exdir::parse_exdir(&s, &ex, 16)
+            && let Some(u) = info.upcase
         {
-            best = Some((1 << shift, data, v));
+            upcase = Some((o, u));
+            break;
         }
     }
-    let Some((cluster, data, v)) = best else {
+    let mut chosen = None;
+    if let Some((_, (uc, ulen, usum))) = upcase
+        && (2..=1 << 20).contains(&ulen)
+    {
+        for &(cluster, data, v) in &grids {
+            let Some(off) = u64::from(uc)
+                .checked_sub(2)
+                .map(|k| data + k * u64::from(cluster))
+            else {
+                continue;
+            };
+            let mut t = vec![0u8; usize::try_from(ulen).unwrap_or(0)];
+            if r.read(off, &mut t).is_ok_and(|rep| rep.is_clean()) && exdir::upcase_checksum(&t) == usum {
+                chosen = Some((cluster, data, v, true));
+                break;
+            }
+        }
+    }
+    let Some((cluster, data, v, confirmed)) =
+        chosen.or_else(|| grids.first().map(|&(c, d, v)| (c, d, v, false)))
+    else {
         return Ok(None);
     };
-    if v < 2 || v * 3 < pointers.len() as u64 {
-        return Ok(None);
-    }
     let end = scan.range.end;
     let mut max = (end.saturating_sub(data)) / u64::from(cluster) + 1;
     let mut root = RootDir::Unknown;
@@ -431,7 +549,8 @@ fn exfat_from_votes(r: &GuardedReader, scan: &DeepScan) -> Result<Option<Found>,
     Ok(Some(Found {
         geometry: g,
         evidence,
-        score: 300 + v.min(500),
+        // An up-case checksum match pins the grid exactly; votes alone can be off by a few clusters.
+        score: 300 + v.min(500) + if confirmed { 400 } else { 0 },
     }))
 }
 
@@ -457,6 +576,16 @@ pub fn seeds_for(g: &FatGeometry, scan: &DeepScan) -> Vec<DirectorySeed> {
                 out.push(DirectorySeed {
                     cluster: u64::from(me),
                     parent: Some(u64::from(parent)),
+                    origin: SeedOrigin::OwnScan,
+                });
+            }
+        }
+        // Fragments: directory clusters without `.`, parent unknown.
+        for &o in &scan.dir_frags {
+            if let Some(c) = g.cluster_at(o) {
+                out.push(DirectorySeed {
+                    cluster: u64::from(c),
+                    parent: None,
                     origin: SeedOrigin::OwnScan,
                 });
             }

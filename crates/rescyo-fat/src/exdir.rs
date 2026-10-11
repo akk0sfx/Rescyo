@@ -31,7 +31,8 @@ pub struct ExEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RootInfo {
     pub bitmap: Option<(u32, u64)>,
-    pub upcase: Option<(u32, u64)>,
+    /// First cluster, length and table checksum of the up-case table.
+    pub upcase: Option<(u32, u64, u32)>,
     pub label: Option<String>,
 }
 
@@ -82,6 +83,13 @@ fn ts(raw: u32, ten_ms: u8, utc: u8) -> Option<Timestamp> {
         t.zone = TimeZone::Utc;
     }
     Some(t)
+}
+
+/// Checksum of an up-case table, as stored in its directory entry.
+pub fn upcase_checksum(table: &[u8]) -> u32 {
+    table
+        .iter()
+        .fold(0u32, |sum, &b| sum.rotate_right(1).wrapping_add(u32::from(b)))
 }
 
 /// Tries to read an entry set starting at slot offset `o`. Returns the entry and the number of
@@ -169,6 +177,28 @@ fn file_set(d: &[u8], o: usize, ctx: &ExContext) -> Option<(ExEntry, usize)> {
     ))
 }
 
+/// Byte offset of an entry set that starts in `d` but does not fit in it (it continues in the
+/// directory's next cluster).
+pub fn incomplete_tail(d: &[u8]) -> Option<usize> {
+    let slots = d.len() / 32;
+    for k in 1..=slots.min(19) {
+        let o = (slots - k) * 32;
+        let t = u8_at(d, o)?;
+        if t & !IN_USE == FILE {
+            let n = usize::from(u8_at(d, o + 1)?) + 1;
+            return ((2..=19).contains(&n) && n > k).then_some(o);
+        }
+    }
+    None
+}
+
+/// Whether `head` (the start of a candidate cluster) completes the set beginning at `tail`.
+pub fn completes_set(tail: &[u8], head: &[u8], ctx: &ExContext) -> bool {
+    let mut buf = tail.to_vec();
+    buf.extend_from_slice(head.get(..head.len().min(32 * 19)).unwrap_or_default());
+    file_set(&buf, 0, ctx).is_some()
+}
+
 /// Parses a directory's bytes into entries and, for a root directory, its system entries.
 pub fn parse_exdir(d: &[u8], ctx: &ExContext, max_entries: usize) -> (Vec<ExEntry>, RootInfo) {
     let mut out = Vec::new();
@@ -188,8 +218,10 @@ pub fn parse_exdir(d: &[u8], ctx: &ExContext, max_entries: usize) -> (Vec<ExEntr
                 }
             }
             0x82 => {
-                if let (Some(c), Some(len)) = (u32_at(d, o + 20), u64_at(d, o + 24)) {
-                    info.upcase = Some((c, len));
+                if let (Some(sum), Some(c), Some(len)) =
+                    (u32_at(d, o + 4), u32_at(d, o + 20), u64_at(d, o + 24))
+                {
+                    info.upcase = Some((c, len, sum));
                 }
             }
             0x83 => {

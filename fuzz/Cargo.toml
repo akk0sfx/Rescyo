@@ -16,10 +16,26 @@ members = ["."]
 libfuzzer-sys = "0.4"
 rescyo-io = { path = "../crates/rescyo-io", features = ["testing"] }
 rescyo-part = { path = "../crates/rescyo-part" }
+rescyo-fat = { path = "../crates/rescyo-fat" }
+rescyo-fs = { path = "../crates/rescyo-fs" }
 
 [[bin]]
 name = "part_tables"
 path = "fuzz_targets/part_tables.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fat_dir"
+path = "fuzz_targets/fat_dir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fat_volume"
+path = "fuzz_targets/fat_volume.rs"
 test = false
 doc = false
 bench = false
