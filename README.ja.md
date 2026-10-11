@@ -1,39 +1,117 @@
+<div align="center">
+
+<img src="assets/brand/logo.svg" width="132" alt="Rescyo のロゴ：上部のセグメントが元の位置に戻りつつある浮き輪">
+
 # Rescyo レスキオ
+
+**ディスクに一切書き込まない、無料のオープンソース・データ復旧ツール。**
+
+[![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
+[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#対応プラットフォーム)
+[![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
 [English](README.md) · [Русский](README.ru.md) · [简体中文](README.zh-CN.md) · **日本語** · [한국어](README.ko.md)
 
+[クイックスタート](#クイックスタート) · [Rescyo の特長](#rescyo-の特長) · [しくみ](#しくみ) · [ファイルシステム](#ファイルシステム) · [ロードマップ](docs/roadmap.md)
+
+</div>
+
+---
+
 > この翻訳は機械支援による下訳で、ネイティブによる校正待ちです。改善の提案を歓迎します。
 
-Rescyo は、破損・フォーマット済み・一部読み取り不能になったディスク、メモリーカード、USB メモリからのデータ復旧を行う、無料のオープンソースツールです。単一のポータブル実行ファイルで Windows 7–11、Linux、macOS に対応します。
+Rescyo は、破損・フォーマット済み・一部読み取り不能になったディスク、メモリーカード、USB メモリからファイルを取り戻します。ファイル数の制限なしにフォルダーツリー全体を復旧し、各ファイルがどう組み立てられたか、内容の検証に合格したかを示し、劣化したディスクを丁寧に扱います。単一のポータブル実行ファイルで Windows 7–11、Linux、macOS に対応し、CLI は安定した JSON を出力します。
 
-> **ステータス：プレアルファ。** まだリリースはありません。v0.1.0 がバイト単位の復旧検証に合格するまで、重要なデータには使用しないでください。
+DMDE、R-Studio、UFS Explorer の無料オープンソース代替ソフトです。
 
-DMDE、R-Studio、UFS Explorer の無料オープンソース代替ソフトです。本プロジェクトは DMDE Software、R-Tools Technology、SysDev Laboratories とは一切関係ありません。DMDE、R-Studio、UFS Explorer は各所有者の商標です。
+> [!WARNING]
+> **プレアルファ。** まだリリースはありません。v0.1.0 がバイト単位の復旧検証に合格するまで、重要なデータには使用しないでください。
 
-## 基本方針
+## Rescyo の特長
 
-- **復旧元には絶対に書き込まない。** 復旧対象のディスクは読み取り専用で開かれ、型によって保証されます（I/O 層に書き込み操作は存在しません）。復旧したファイルを同じ物理デバイスに保存することはできません。判定はドライブ文字ではなくデバイス単位で行います。
-- **ファイルごとに正直に示す。** 復旧した各ファイルについて、どのように組み立てたか（FAT チェーン、MFT ランリスト、または「連続」と仮定）と、内容の検証結果を表示します。
-- **劣化したメディアをいたわる。** 読み取れないセクターは一度だけ読み、記録して二度と読み直しません。ディスクの劣化を検知すると停止し、先にイメージを取得するよう案内します。
-- **入力は敵対的なものとして扱う。** ディスク構造の解析は `unsafe` を使わず、再帰・ループ・メモリ確保に厳格な上限を設け、すべてのパーサーをファジングします。
-- **自動化を最優先。** すべての機能を CLI から利用でき、安定したバージョン付き JSON を出力します。
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## v0.1 の予定
+**設計段階から読み取り専用**<br>
+復旧元のディスクは読み取り専用で開かれ、型システムがそれを保証します（I/O 層に書き込み操作はありません）。同じ物理デバイスへの保存はドライブ文字ではなくデバイス単位で拒否されます。
 
-- FAT12/16/32、exFAT、NTFS：失われたボリュームの検出、フォルダーツリーの再構築、削除済みファイル
-- ファイル数の制限なしでフォルダーツリー全体を復旧
-- DMDE のスキャンログ（`devscan.log`）の取り込みによる再スキャンの省略
-- 全ファイルの SHA-256 を含む JSON / CSV レポート
-- 英語・ロシア語・簡体字中国語・日本語・韓国語の UI
+</td>
+<td width="50%" valign="top">
 
-以降のバージョンは[ロードマップ](docs/roadmap.md)を参照してください。
+**ファイルごとに正直に**<br>
+各ファイルについて、組み立て方法（FAT チェーン、ミラー FAT、MFT ランリスト、または「連続」と仮定）と内容の検証結果を表示します。中身が壊れたファイルが正常なファイルと同じに見えることはありません。
 
-## ビルド
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**劣化したメディアをいたわる**<br>
+読み取れないセクターは一度だけ読み、不良セクターマップに記録して二度と読み直しません。劣化を検知すると一時停止し、先にイメージを取得するよう案内します。
+
+</td>
+<td valign="top">
+
+**フォルダーツリー全体を無制限に**<br>
+親フォルダーが壊れたフォルダーも含めて一度に復旧します（`_LOST_FOLDERS` に配置）。DMDE のスキャンログを取り込めば、何時間もの再スキャンが不要です。
+
+</td>
+</tr>
+</table>
+
+## クイックスタート
+
+まだリリースされていません。ソースからビルドするには：
 
 ```sh
+git clone https://github.com/akk0sfx/Rescyo.git
+cd Rescyo
 cargo build --release
 ```
+
+予定している v0.1 のコマンド：
+
+```sh
+rescyo disks --json                              # ディスク一覧
+rescyo scan /dev/sdb --session flash.db          # ボリュームとフォルダーを検出（読み取り専用）
+rescyo ls flash.db --deleted --ext jpg,docx      # 見つかったファイルを閲覧
+rescyo recover flash.db --to /mnt/backup/flash   # SHA-256 レポート付きで書き出し
+```
+
+## しくみ
+
+```mermaid
+flowchart LR
+  S["復旧元<br/>ディスク · イメージ"] --> G["保護付き読み取り<br/>読み取り専用 · 不良セクターマップ"]
+  G --> E["エンジン<br/>FAT · exFAT · NTFS"]
+  E --> D[("セッション<br/>SQLite")]
+  D --> R["復旧<br/>別のデバイスへ"]
+  R --> P["レポート<br/>JSON · CSV · SHA-256"]
+```
+
+## ファイルシステム
+
+| ファイルシステム | 対応範囲 | バージョン |
+|---|---|---|
+| FAT12、FAT16、FAT32 | 完全：失われたボリューム、フォルダーツリー、削除済みファイル | v0.1 |
+| exFAT | 完全 | v0.1 |
+| NTFS | 完全：MFT、削除済みファイル。圧縮・スパース・ADS は v0.2 | v0.1 |
+| ext4、HFS+、APFS、Btrfs | 実験的 | v0.3–v0.4 |
+
+## 対応プラットフォーム
+
+| OS | アーキテクチャ |
+|---|---|
+| Windows 10 / 11 | x64、arm64 |
+| Windows 7 SP1 | x64、x86（専用ビルド） |
+| Linux | x86_64、i686、aarch64、armv7、riscv64、loongarch64 |
+| macOS 10.12+ | Apple シリコン、Intel |
 
 ## ライセンス
 
 GPL-3.0-or-later。[LICENSE](LICENSE) を参照してください。本プログラムは無保証です。
+
+本プロジェクトは DMDE Software、R-Tools Technology、SysDev Laboratories とは一切関係ありません。DMDE、R-Studio、UFS Explorer は各所有者の商標です。
