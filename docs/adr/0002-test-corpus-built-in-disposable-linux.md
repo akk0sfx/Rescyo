@@ -5,3 +5,5 @@ Test images are created by the reference tools (`mkfs.fat`, `mtools`, `mkfs.exfa
 ## Consequences
 
 Physical-disk backends are integration-tested only on disposable CI runners, gated by `RESCYO_CI_DISPOSABLE=1`. Small compressed fixtures are committed so `cargo test` works offline on every OS.
+
+The container runs `--privileged --network none`: exfat-fuse requires a block device when run as root, so exFAT volumes are populated through a loop device of the container's own Linux VM. Host disks are never visible to that VM (Docker Desktop) or exist only on a disposable runner (CI).

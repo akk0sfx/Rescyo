@@ -22,6 +22,7 @@ rescyo-ntfs = { path = "crates/rescyo-ntfs" }
 rescyo-dmde = { path = "crates/rescyo-dmde" }
 rescyo-core = { path = "crates/rescyo-core" }
 rescyo-i18n = { path = "crates/rescyo-i18n" }
+rescyo-testkit = { path = "crates/rescyo-testkit" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

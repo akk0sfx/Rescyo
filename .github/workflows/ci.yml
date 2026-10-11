@@ -110,3 +110,22 @@ jobs:
           "RESCYO_CI_IMAGE=$(Join-Path $env:RUNNER_TEMP 'disk.img')" | Out-File -Append $env:GITHUB_ENV
       - name: Run physical test
         run: cargo test -p rescyo-io --test physical_ci --locked -- --nocapture
+
+  corpus:
+    # Builds the test corpus with the reference tools inside the corpus container (ADR-0002)
+    # and runs every test that needs it. Cached by the hash of the generator and scenarios.
+    name: corpus tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: corpus-cache
+        with:
+          path: corpus/out
+          key: corpus-${{ hashFiles('corpus/container/**', 'corpus/scenarios/**') }}
+      - name: Build corpus
+        if: steps.corpus-cache.outputs.cache-hit != 'true'
+        run: cargo xtask corpus
+      - name: Tests with corpus
+        run: cargo test --workspace --locked
