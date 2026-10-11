@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#지원-플랫폼)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -26,8 +26,8 @@ Rescyo는 손상되었거나 포맷되었거나 일부를 읽을 수 없는 디�
 
 DMDE, R-Studio, UFS Explorer의 무료 오픈 소스 대안입니다.
 
-> [!WARNING]
-> **프리알파.** 아직 릴리스가 없습니다. v0.1.0이 바이트 단위 복구 검증을 통과하기 전에는 중요한 데이터에 사용하지 마십시오.
+> [!IMPORTANT]
+> **알파(v0.1).** 명령줄로 FAT, exFAT, NTFS를 복구할 수 있고 바이트 단위 복구 테스트를 통과했지만 서명된 바이너리는 아직 없습니다. 항상 다른 디스크로 복구하고, 고장 나는 디스크는 먼저 이미지를 만드십시오.
 
 ## Rescyo를 쓰는 이유
 

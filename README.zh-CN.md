@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#支持平台)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -26,8 +26,8 @@ Rescyo 可从损坏、已格式化或部分无法读取的硬盘、存储卡和 
 
 DMDE、R-Studio 和 UFS Explorer 的免费开源替代品。
 
-> [!WARNING]
-> **预览前期（pre-alpha）。** 尚未发布任何版本。在 v0.1.0 通过逐字节恢复验证之前，请勿用于重要数据。
+> [!IMPORTANT]
+> **Alpha 版（v0.1）。** 命令行可恢复 FAT、exFAT 和 NTFS，并通过了逐字节恢复测试，但尚无签名的二进制文件。请始终恢复到另一块磁盘；磁盘出现故障时请先制作镜像。
 
 ## 为什么选择 Rescyo
 

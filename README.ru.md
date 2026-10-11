@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#платформы)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 [![unsafe](https://img.shields.io/badge/unsafe-forbidden%20in%20parsers-14965F)](CONTRIBUTING.md#safety-rules)
@@ -25,8 +25,8 @@ Rescyo возвращает файлы с повреждённых, отформ
 
 Бесплатная open-source альтернатива DMDE, R-Studio и UFS Explorer.
 
-> [!WARNING]
-> **Пре-альфа.** Релизов пока нет. Не доверяйте Rescyo важные данные, пока v0.1.0 не пройдёт проверку побайтного восстановления.
+> [!IMPORTANT]
+> **Альфа (v0.1).** Командная строка восстанавливает FAT, exFAT и NTFS и проходит проверку побайтного восстановления, но подписанных сборок пока нет. Всегда восстанавливайте на другой диск, а умирающий диск сначала снимайте в образ.
 
 ## Почему Rescyo
 
@@ -77,7 +77,7 @@ Rescyo возвращает файлы с повреждённых, отформ
 
 ## Быстрый старт
 
-Релиза пока нет. Сборка из исходников:
+Подписанных сборок пока нет: соберите из исходников (Rust 1.99) или возьмите неподписанные артефакты последнего [запуска Build](https://github.com/akk0sfx/Rescyo/actions/workflows/build.yml).
 
 ```sh
 git clone https://github.com/akk0sfx/Rescyo.git
@@ -85,11 +85,12 @@ cd Rescyo
 cargo build --release
 ```
 
-Командная строка v0.1 в планах:
+Затем, для диска или образа (чтение дисков требует прав администратора или root):
 
 ```sh
 rescyo disks --json                              # список дисков
 rescyo scan /dev/sdb --session flash.db          # найти тома и папки (только чтение)
+rescyo scan /dev/sdb --session flash.db --deep   # искать и потерянные тома и папки
 rescyo ls flash.db --deleted --ext jpg,docx      # посмотреть найденное
 rescyo recover flash.db --to /mnt/backup/flash   # скопировать с отчётом SHA-256
 rescyo import-dmde devscan.log --source /dev/sdb --session flash.db
