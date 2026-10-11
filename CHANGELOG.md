@@ -4,13 +4,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **Virtual-disk containers as sources**: VHD (fixed, dynamic, differencing), VHDX (dynamic, fixed, differencing; an unreplayed log is replayed in memory only), VMDK (sparse, stream-optimized, flat and split descriptors, delta disks), qcow2 v2/v3 (compressed clusters, backing files) and EnCase/SMART E01/S01 evidence sets (all segments, Adler-32 and table mirrors) open directly, detected by signature or chosen with `--format`. Damage inside a container (a table entry outside its file, a chunk that fails its checksum or does not decompress) makes only that range unreadable; header copies, redundant grain directories and table mirrors are used when the primary is damaged. `rescyo image` converts any of them to a raw image. Checked against files written by qemu-img and ewfacquire (`cargo xtask containers`).
+
 ## [0.2.0] — 2026-10-12
 
 Second alpha: image a dying disk before touching it, find partitions the table lost, and read the NTFS files Windows compresses.
 
 ### Added
 
-- **Virtual-disk containers as sources**: VHD (fixed, dynamic, differencing), VHDX (dynamic, fixed, differencing; an unreplayed log is replayed in memory only), VMDK (sparse, stream-optimized, flat and split descriptors, delta disks), qcow2 v2/v3 (compressed clusters, backing files) and EnCase/SMART E01/S01 evidence sets (all segments, Adler-32 and table mirrors) open directly, detected by signature or chosen with `--format`. Damage inside a container (a table entry outside its file, a chunk that fails its checksum or does not decompress) makes only that range unreadable; header copies, redundant grain directories and table mirrors are used when the primary is damaged. `rescyo image` converts any of them to a raw image. Checked against files written by qemu-img and ewfacquire (`cargo xtask containers`).
 - **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
 - **NTFS compression**: files compressed by NTFS (LZNT1) are rebuilt one compression unit at a time, including deleted ones; damage inside a unit marks only that unit unreadable.
 - **WOF compression** (`compact /exe:xpress4k|xpress8k|xpress16k|lzx`, used by Windows 10/11 for system files): XPRESS Huffman and LZX decoders written from the public specifications, checked against wimlib.
