@@ -273,7 +273,7 @@ pub(super) fn open(path: &Path) -> Result<Opened, OpenError> {
     let chunk_ratio = ((1u64 << 23) * u64::from(sector)) / block_size;
     let blocks = size.div_ceil(block_size);
     let entries = if has_parent {
-        blocks.div_ceil(chunk_ratio) * (chunk_ratio + 1)
+        blocks.div_ceil(chunk_ratio).saturating_mul(chunk_ratio + 1)
     } else {
         blocks + blocks.saturating_sub(1) / chunk_ratio
     };
@@ -560,7 +560,7 @@ impl Layout for VhdxLayout {
             FULLY_PRESENT if host != 0 => Ok(self.host_piece(host + within, run)),
             PARTIALLY_PRESENT if self.differencing && host != 0 => {
                 let chunk = block / self.chunk_ratio;
-                let bm_entry = self.entry((chunk + 1) * (self.chunk_ratio + 1) - 1);
+                let bm_entry = self.entry((chunk + 1).saturating_mul(self.chunk_ratio + 1) - 1);
                 if bm_entry & 7 != FULLY_PRESENT {
                     return Ok((Piece::Bad, run));
                 }

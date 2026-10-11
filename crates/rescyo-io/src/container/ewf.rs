@@ -412,7 +412,7 @@ impl Layout for EwfLayout {
         let described = self
             .tables
             .last()
-            .is_some_and(|t| chunk < t.first_chunk + t.count);
+            .is_some_and(|t| chunk < t.first_chunk.saturating_add(t.count));
         if !described {
             return Ok((Piece::Bad, run));
         }
@@ -420,7 +420,9 @@ impl Layout for EwfLayout {
     }
 
     fn decode(&self, files: &[HostFile], chunk: u64) -> Result<Vec<u8>, ReadError> {
-        let t = self.tables.partition_point(|t| t.first_chunk + t.count <= chunk);
+        let t = self
+            .tables
+            .partition_point(|t| t.first_chunk.saturating_add(t.count) <= chunk);
         let table = self.tables.get(t).ok_or(ReadError::Media)?;
         let entries = self.entries(files, t)?;
         let i = usize::try_from(chunk - table.first_chunk).map_err(|_| ReadError::Media)?;

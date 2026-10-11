@@ -145,9 +145,12 @@ pub(super) fn open(path: &Path) -> Result<Opened, OpenError> {
     let (desc, embedded) = match parse_header(&head) {
         Some(h) => {
             let text = if h.descriptor_offset != 0 && h.descriptor_size != 0 {
-                let len = (h.descriptor_size * SECTOR).min(MAX_DESCRIPTOR);
+                let len = h.descriptor_size.saturating_mul(SECTOR).min(MAX_DESCRIPTOR);
                 first
-                    .read_vec(h.descriptor_offset * SECTOR, usize::try_from(len).unwrap_or(0))
+                    .read_vec(
+                        h.descriptor_offset.saturating_mul(SECTOR),
+                        usize::try_from(len).unwrap_or(0),
+                    )
                     .ok()
                     .map(|b| String::from_utf8_lossy(&b).trim_end_matches('\0').to_string())
             } else {
@@ -202,7 +205,7 @@ pub(super) fn open(path: &Path) -> Result<Opened, OpenError> {
                 let file = file_index(&mut files)?;
                 ExtentKind::Flat {
                     file,
-                    offset: line.offset * SECTOR,
+                    offset: line.offset.saturating_mul(SECTOR),
                 }
             }
             "ZERO" => ExtentKind::Zero,
@@ -291,7 +294,7 @@ fn open_sparse(host: &HostFile, file: usize, notes: &mut Vec<String>) -> Result<
             format!("compression algorithm {}", header.compress),
         ));
     }
-    let per_gd = header.grain * header.gtes_per_gt;
+    let per_gd = header.grain.saturating_mul(header.gtes_per_gt).max(1);
     let gd_entries = header.capacity.div_ceil(per_gd).min(host.len / 4);
     let read_gd = |sector: u64| -> Option<Vec<u32>> {
         if sector == 0 {
@@ -434,7 +437,7 @@ impl Layout for VmdkLayout {
                 left,
             )),
             ExtentKind::Sparse(s) => {
-                let grain = s.header.grain * SECTOR;
+                let grain = s.header.grain.saturating_mul(SECTOR).max(SECTOR);
                 let g = within / grain;
                 let in_grain = within % grain;
                 let run = (grain - in_grain).min(left);
@@ -478,7 +481,7 @@ impl Layout for VmdkLayout {
         let mut head = [0u8; 12];
         file.read(at, &mut head)?;
         let size = u64::from(u32_at(&head, 8).ok_or(ReadError::Media)?);
-        let grain = s.header.grain * SECTOR;
+        let grain = s.header.grain.saturating_mul(SECTOR).max(SECTOR);
         if size == 0 || size > grain + 4096 {
             return Err(ReadError::Media);
         }
