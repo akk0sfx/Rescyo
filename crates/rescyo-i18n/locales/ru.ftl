@@ -78,6 +78,8 @@ problem-file-too-large = { $path } весит { $size } — больше, чем
 problem-nothing-selected = Под выбор ничего не попало.
 
 error-source-open = Не удалось открыть { $source }: { $reason }
+error-image-unsupported = Не удалось открыть { $source }: { $reason }. Преобразуйте его в сырой образ (например, через qemu-img) и откройте его.
+error-parent-missing = { $source } — разностный образ, а его родительский образ не найден (искал: { $tried }). Положите родительский образ рядом.
 error-source-mismatch = { $source } — не тот источник, по которому сделана сессия ({ $reason }). Используйте --force-rebind, только если уверены.
 error-session-exists = { $path } уже существует. Rescyo никогда не перезаписывает сессию; выберите другое имя файла.
 error-session-invalid = { $path } — не сессия Rescyo: { $reason }
@@ -94,6 +96,8 @@ hint-admin = Для чтения дисков нужны права админи
 
 ## Imaging
 image-start = Снимаю образ { $source } в { $image } (карта: { $map })…
+container-opened = Образ { $format }: виртуальный диск { $size }, файлов: { $files }.
+container-note = Замечание об образе: { $note }
 phase-image-copy = Копирование
 phase-image-trim = Обрезка плохих зон
 phase-image-scrape = Дочитка плохих зон

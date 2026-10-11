@@ -43,6 +43,8 @@ problem-file-too-large = { $path } は { $size } で、保存先のファイル�
 problem-nothing-selected = 条件に一致する項目がありません。
 
 error-source-open = { $source } を開けません：{ $reason }
+error-image-unsupported = { $source } を開けません：{ $reason }。raw イメージに変換して（例：qemu-img）から開いてください。
+error-parent-missing = { $source } は差分イメージですが、親イメージが見つかりません（試したパス：{ $tried }）。親イメージを同じ場所に置いてください。
 error-source-mismatch = { $source } はこのセッションを作成したソースではありません（{ $reason }）。確信がある場合のみ --force-rebind を使用してください。
 error-session-exists = { $path } は既に存在します。Rescyo はセッションを上書きしません。別のファイル名を指定してください。
 error-session-invalid = { $path } は Rescyo のセッションではありません：{ $reason }
@@ -59,6 +61,8 @@ hint-admin = ディスクの読み取りには、Windows では管理者権限�
 
 ## Imaging
 image-start = { $source } のイメージを { $image } に作成しています（マップ：{ $map }）…
+container-opened = { $format } イメージ：仮想ディスク { $size }、ファイル数 { $files }。
+container-note = イメージに関する注意：{ $note }
 phase-image-copy = コピー
 phase-image-trim = 不良領域のトリミング
 phase-image-scrape = 不良領域の再読み取り

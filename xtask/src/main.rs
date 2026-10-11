@@ -1,6 +1,8 @@
 //! Developer tasks for Rescyo. Run with `cargo xtask <task>`.
 //!
 //! - `corpus [scenario…]`  build the test corpus inside the corpus container (ADR-0002)
+//! - `containers [scenario…]`  wrap the corpus images into VHD/VHDX/VMDK/qcow2/E01 with the
+//!   reference tools (qemu-img, ewfacquire) inside their own container
 //! - `corrupt <scenario> <corruption> <out.img>`  write a damaged copy for manual inspection
 //! - `gate1`  Gate 1: every scenario and corruption through the shipping `rescyo` binary
 #![forbid(unsafe_code)]
@@ -11,11 +13,13 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 
 const IMAGE_TAG: &str = "rescyo-corpus:dev";
+const CONTAINERS_TAG: &str = "rescyo-containers:dev";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("corpus") => corpus(args.get(1..).unwrap_or_default()),
+        Some("containers") => containers(args.get(1..).unwrap_or_default()),
         Some("gate1") => gate1(),
         Some("corrupt") => match args.get(1..) {
             Some([scenario, corruption, out]) => corrupt(scenario, corruption, Path::new(out)),
@@ -23,7 +27,7 @@ fn main() -> Result<()> {
         },
         _ => {
             eprintln!(
-                "usage: cargo xtask <corpus [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1>"
+                "usage: cargo xtask <corpus [scenario…] | containers [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1>"
             );
             std::process::exit(2);
         }
@@ -73,6 +77,36 @@ fn corpus(only: &[String]) -> Result<()> {
             s.expected.files.len(),
             s.expected.corruptions.join(", ")
         );
+    }
+    Ok(())
+}
+
+/// Wraps the built corpus images into virtual-disk containers with qemu-img and ewfacquire,
+/// inside a container that sees only the corpus output directory (ADR-0002).
+fn containers(only: &[String]) -> Result<()> {
+    let root = workspace_root().canonicalize()?;
+    let out = rescyo_testkit::corpus_root();
+    if !out.is_dir() {
+        bail!("no corpus: run `cargo xtask corpus` first");
+    }
+    let out = out.canonicalize()?;
+    let status = Command::new("docker")
+        .args(["build", "--quiet", "--tag", CONTAINERS_TAG])
+        .arg(root.join("corpus/containers"))
+        .status()
+        .context("running docker (is Docker running?)")?;
+    if !status.success() {
+        bail!("docker build failed");
+    }
+    let status = Command::new("docker")
+        .args(["run", "--rm", "--network", "none"])
+        .arg("-v")
+        .arg(format!("{}:/out", out.display()))
+        .arg(CONTAINERS_TAG)
+        .args(only)
+        .status()?;
+    if !status.success() {
+        bail!("wrapping the corpus into containers failed");
     }
     Ok(())
 }

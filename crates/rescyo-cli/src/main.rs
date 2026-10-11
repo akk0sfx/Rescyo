@@ -26,7 +26,7 @@ use rescyo_fs::{CancelToken, EntryKind, EntryState};
 use rescyo_i18n::{Arg, size};
 use rescyo_io::mapfile::Mapfile;
 use rescyo_io::{
-    BadSectorMap, BlockSource, FingerprintMatch, GuardedReader, ImageSource, PhysicalDisk, ReadPolicy,
+    BadSectorMap, BlockSource, ContainerFormat, FingerprintMatch, GuardedReader, PhysicalDisk, ReadPolicy,
     SourceFingerprint,
 };
 
@@ -75,6 +75,9 @@ struct SourceArgs {
     /// The ddrescue map of an image: its unread areas count as unreadable sectors.
     #[arg(long)]
     map: Option<PathBuf>,
+    /// Format of an image file: auto (detect), raw, vhd, vhdx, vmdk, qcow2 or e01.
+    #[arg(long, default_value = "auto")]
+    format: String,
 }
 
 #[derive(Debug, Args)]
@@ -413,18 +416,47 @@ fn is_device(path: &str) -> bool {
     false
 }
 
-fn open_raw(path: &str, sector_size: u32) -> Result<Arc<dyn BlockSource>, Failure> {
-    Ok(if is_device(path) {
-        Arc::new(PhysicalDisk::open(path).map_err(|e| Failure::source_open(path, &e))?)
-    } else {
-        Arc::new(ImageSource::open(Path::new(path), sector_size).map_err(|e| Failure::source_open(path, &e))?)
-    })
+/// Opens a disk, or an image file in any supported format (detected unless `format` names one).
+fn open_raw(out: &Out, path: &str, sector_size: u32, format: &str) -> Result<Arc<dyn BlockSource>, Failure> {
+    if is_device(path) {
+        return Ok(Arc::new(
+            PhysicalDisk::open(path).map_err(|e| Failure::source_open(path, &e))?,
+        ));
+    }
+    let format = match format {
+        "auto" | "" => None,
+        name => Some(
+            ContainerFormat::from_name(name)
+                .ok_or_else(|| Failure::usage(format!("unknown image format {name:?}")))?,
+        ),
+    };
+    let (src, info) = rescyo_io::open_image(Path::new(path), sector_size, format)
+        .map_err(|e| Failure::image_open(path, &e))?;
+    if info.format != ContainerFormat::Raw {
+        out.say(&out.t(
+            "container-opened",
+            &[
+                ("format", info.format.name().to_ascii_uppercase().into()),
+                ("size", size(info.virtual_size).into()),
+                ("files", (info.files.len() as u64).into()),
+            ],
+        ));
+        for note in &info.notes {
+            out.say(&out.t("container-note", &[("note", note.clone().into())]));
+        }
+    }
+    Ok(src)
 }
 
 /// Opens a Source for reading. `known` holds sectors already known to be unreadable (from the
 /// Session), so they are not read again.
-fn open_source(path: &str, a: &SourceArgs, mut known: BadSectorMap) -> Result<GuardedReader, Failure> {
-    let src = open_raw(path, a.sector_size)?;
+fn open_source(
+    out: &Out,
+    path: &str,
+    a: &SourceArgs,
+    mut known: BadSectorMap,
+) -> Result<GuardedReader, Failure> {
+    let src = open_raw(out, path, a.sector_size, &a.format)?;
     if let Some(map_path) = &a.map {
         // Sectors the imager could not read are zeros in the image: report them as unreadable.
         let text =
@@ -598,7 +630,7 @@ fn print_partitions(out: &Out, rows: &[dto::PartitionRow], only_lost: bool) {
 }
 
 fn partitions(out: &mut Out, source: &str, src: &SourceArgs, cancel: &CancelToken) -> Result<u8, Failure> {
-    let r = open_source(source, src, BadSectorMap::new())?;
+    let r = open_source(out, source, src, BadSectorMap::new())?;
     out.say(&out.t("partitions-start", &[("source", source.into())]));
     let rep =
         rescyo_core::find_partitions(&r, &mut |p| out.progress(p), cancel).map_err(Failure::from_scan)?;
@@ -681,7 +713,7 @@ fn scan(
     cancel: &CancelToken,
 ) -> Result<u8, Failure> {
     let cp = codepage(cp)?;
-    let r = open_source(source, src, BadSectorMap::new())?;
+    let r = open_source(out, source, src, BadSectorMap::new())?;
     let mut s = new_session(&r, session, allow_unverified)?;
     out.say(&out.t("scan-start", &[("source", source.into())]));
     let opts = ScanOptions {
@@ -716,7 +748,7 @@ fn import(
     let cp = codepage(cp)?;
     let bytes = std::fs::read(log).map_err(|e| Failure::dmde_parse(&e.to_string()))?;
     let parsed = rescyo_dmde::parse(&bytes).map_err(|e| Failure::dmde_parse(&e.to_string()))?;
-    let r = open_source(source, src, BadSectorMap::new())?;
+    let r = open_source(out, source, src, BadSectorMap::new())?;
     let mut s = new_session(&r, session, allow_unverified)?;
     let io = ImportOptions {
         volume,
@@ -910,7 +942,7 @@ fn recover(
     } else {
         BadSectorMap::new()
     };
-    let r = open_source(&path, src_args, known)?;
+    let r = open_source(out, &path, src_args, known)?;
     let fresh = SourceFingerprint::compute(&r).map_err(Failure::from_guard)?;
     match rec.fingerprint.compare(&fresh) {
         FingerprintMatch::Match => {
@@ -1054,7 +1086,7 @@ fn image(
         },
         Path::to_path_buf,
     );
-    let src = open_raw(source, sector_size)?;
+    let src = open_raw(out, source, sector_size, "auto")?;
     for p in [to, map_path.as_path()] {
         rescyo_core::check_destination(&SystemResolver, src.identity(), parent_dir(p), allow_unverified)
             .map_err(|p| Failure::session_on_source(&p))?;
