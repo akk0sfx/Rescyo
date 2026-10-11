@@ -174,12 +174,13 @@ impl From<GuardError> for ScanError {
 enum Cand {
     Fat(FatGeometry, Vec<Evidence>, u64),
     Ntfs(NtfsGeometry, Vec<Evidence>, u64),
+    Ext4(rescyo_ext4::Ext4Geometry, Vec<Evidence>, u64),
 }
 
 impl Cand {
     fn score(&self) -> u64 {
         match self {
-            Self::Fat(_, _, s) | Self::Ntfs(_, _, s) => *s,
+            Self::Fat(_, _, s) | Self::Ntfs(_, _, s) | Self::Ext4(_, _, s) => *s,
         }
     }
 
@@ -187,6 +188,7 @@ impl Cand {
         match self {
             Self::Fat(g, e, s) => g.to_candidate(e.clone(), *s),
             Self::Ntfs(g, e, s) => g.to_candidate(e.clone(), *s),
+            Self::Ext4(g, e, s) => g.to_candidate(e.clone(), *s),
         }
     }
 
@@ -195,6 +197,7 @@ impl Cand {
         match self {
             Self::Fat(g, _, _) => g.volume_offset.unwrap_or(g.data_offset)..g.data_end(),
             Self::Ntfs(g, _, _) => g.volume_offset..g.volume_offset + g.size,
+            Self::Ext4(g, _, _) => g.volume_offset..g.volume_offset + g.size(),
         }
     }
 
@@ -204,6 +207,7 @@ impl Cand {
                 a.data_offset == b.data_offset && a.cluster_size == b.cluster_size
             }
             (Self::Ntfs(a, _, _), Self::Ntfs(b, _, _)) => a.volume_offset == b.volume_offset,
+            (Self::Ext4(a, _, _), Self::Ext4(b, _, _)) => a.volume_offset == b.volume_offset,
             _ => false,
         }
     }
@@ -257,6 +261,9 @@ pub fn scan(
         for f in rescyo_ntfs::probe_boot(r, start, Some(end))? {
             cands.push(Cand::Ntfs(f.geometry, f.evidence, f.score));
         }
+        for f in rescyo_ext4::probe(r, start)? {
+            cands.push(Cand::Ext4(f.geometry, f.evidence, f.score));
+        }
     }
 
     // One sequential pass serves every deep scanner.
@@ -286,6 +293,9 @@ pub fn scan(
             }
             for f in rescyo_ntfs::probe_boot(r, p.offset, Some(p.offset + p.size))? {
                 cands.push(Cand::Ntfs(f.geometry, f.evidence, f.score));
+            }
+            for f in rescyo_ext4::probe(r, p.offset)? {
+                cands.push(Cand::Ext4(f.geometry, f.evidence, f.score));
             }
         }
         session.journal(
@@ -339,9 +349,9 @@ pub fn scan(
     for c in cands {
         if let Some(m) = merged.iter_mut().find(|m| m.same(&c)) {
             let extra: Vec<Evidence> = match &c {
-                Cand::Fat(_, e, _) | Cand::Ntfs(_, e, _) => e.clone(),
+                Cand::Fat(_, e, _) | Cand::Ntfs(_, e, _) | Cand::Ext4(_, e, _) => e.clone(),
             };
-            let (Cand::Fat(_, ev, _) | Cand::Ntfs(_, ev, _)) = m;
+            let (Cand::Fat(_, ev, _) | Cand::Ntfs(_, ev, _) | Cand::Ext4(_, ev, _)) = m;
             for e in extra {
                 if !ev.contains(&e) {
                     ev.push(e);
@@ -509,6 +519,14 @@ fn walk_one(
                 })?;
             (summary.files, summary.dirs, summary.deleted, summary.lost_folders) =
                 (st.files, st.dirs, st.deleted, st.lost_folders);
+        }
+        Cand::Ext4(g, _, _) => {
+            let st = rescyo_ext4::walk(r, g, &opts.limits, &mut sink, cancel).map_err(|e| match e {
+                rescyo_ext4::WalkError::Read(g) => ScanError::from(g),
+                rescyo_ext4::WalkError::Cancelled => ScanError::Cancelled,
+                other => ScanError::Engine(other.to_string()),
+            })?;
+            (summary.files, summary.dirs, summary.deleted) = (st.files, st.dirs, st.deleted);
         }
     }
     sink.finish()?;

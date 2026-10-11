@@ -210,7 +210,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rescyo-carve"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -226,6 +226,17 @@ name = "rescyo-dmde"
 version = "0.2.0"
 dependencies = [
  "rescyo-fs",
+ "thiserror",
+]
+
+[[package]]
+name = "rescyo-ext4"
+version = "0.2.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -260,6 +271,7 @@ dependencies = [
  "rescyo-carve",
  "rescyo-codec",
  "rescyo-dmde",
+ "rescyo-ext4",
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",

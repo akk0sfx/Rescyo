@@ -678,7 +678,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-carve"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -718,6 +718,7 @@ dependencies = [
  "chrono",
  "rescyo-carve",
  "rescyo-dmde",
+ "rescyo-ext4",
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",
@@ -739,6 +740,20 @@ name = "rescyo-dmde"
 version = "0.2.0"
 dependencies = [
  "rescyo-fs",
+ "thiserror",
+]
+
+[[package]]
+name = "rescyo-ext4"
+version = "0.2.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "rescyo-part",
+ "rescyo-testkit",
+ "serde",
+ "serde_json",
+ "sha2",
  "thiserror",
 ]
 

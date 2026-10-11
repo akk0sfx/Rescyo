@@ -44,6 +44,15 @@ impl Timestamp {
         Some(Self { unix, nanos, zone })
     }
 
+    /// From Unix seconds (UTC) and nanoseconds, as ext4 and other Unix file systems store them.
+    pub fn from_unix(unix: i64, nanos: u32) -> Option<Self> {
+        (unix != 0 && nanos < 1_000_000_000).then_some(Self {
+            unix,
+            nanos,
+            zone: TimeZone::Utc,
+        })
+    }
+
     /// From a Windows FILETIME (100 ns ticks since 1601-01-01 UTC).
     pub fn from_filetime(ticks: u64) -> Option<Self> {
         const EPOCH_DIFF: i64 = 11_644_473_600;
