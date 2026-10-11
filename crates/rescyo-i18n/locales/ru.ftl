@@ -91,3 +91,23 @@ error-cancelled = Остановлено. Всё найденное сохран
 error-preflight = Ничего не записано. Сначала устраните проблемы:
 
 hint-admin = Для чтения дисков нужны права администратора в Windows или sudo в Linux и macOS.
+
+## Imaging
+image-start = Снимаю образ { $source } в { $image } (карта: { $map })…
+phase-image-copy = Копирование
+phase-image-trim = Обрезка плохих зон
+phase-image-scrape = Дочитка плохих зон
+phase-image-retry = Повтор плохих секторов
+image-rescued = спасено
+image-bad-short = плохих
+image-done = Образ готов: спасено { $rescued } из { $size }.
+image-bad = { $count ->
+        [one] { $count } плохая зона ({ $size }) не прочиталась.
+        [few] { $count } плохие зоны ({ $size }) не прочитались.
+       *[many] { $count } плохих зон ({ $size }) не прочитались.
+    } В образе на их месте нули, в карте они отмечены; при скане образа укажите --map.
+error-image-exists = { $path } уже существует, а карты к нему нет. Rescyo никогда не перезаписывает образ; выберите другое имя или укажите его --map.
+error-map-invalid = Не удаётся прочитать карту { $path }: { $reason }
+error-map-mismatch = Карта описывает диск размером { $map }, а у источника { $source }.
+error-image-cancelled = Остановлено. Карта сохранена; запустите ту же команду, чтобы продолжить.
+hint-image-resume = Карта сохранена. Подключите диск снова и запустите ту же команду, чтобы продолжить.

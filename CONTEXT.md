@@ -36,6 +36,14 @@ _Avoid_: error log, bad block list
 **Degradation alarm**:
 The automatic pause of a Scan or Recovery when read errors or slowness cross a threshold, advising to image the Source first.
 
+**Imaging**:
+Copying a whole Source to an image file in passes that take the easy data first and the damaged areas last, so a failing disk is read as little as possible. An interrupted Imaging continues from its Image map.
+_Avoid_: cloning, backup
+
+**Image map**:
+The ddrescue mapfile kept next to an image, saying for every byte range whether it was rescued, is still pending or is unreadable. A Scan of the image takes it as the image's Bad-sector map.
+_Avoid_: log file
+
 ### Volumes and hints
 
 **Volume candidate**:

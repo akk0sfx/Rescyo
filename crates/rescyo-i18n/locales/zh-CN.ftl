@@ -56,3 +56,19 @@ error-cancelled = 已停止。目前找到的内容都保存在会话中。
 error-preflight = 未写入任何内容。请先解决以下问题：
 
 hint-admin = 读取磁盘需要 Windows 管理员权限，或在 Linux 和 macOS 上使用 sudo。
+
+## Imaging
+image-start = 正在将 { $source } 制作镜像到 { $image }（映射文件：{ $map }）…
+phase-image-copy = 复制
+phase-image-trim = 修剪坏区
+phase-image-scrape = 逐扇区读取坏区
+phase-image-retry = 重试坏扇区
+image-rescued = 已救回
+image-bad-short = 坏
+image-done = 镜像完成：已救回 { $rescued },共 { $size }。
+image-bad = { $count } 个坏区（{ $size }）无法读取。它们在镜像中为零,并已在映射文件中标记;扫描镜像时请使用 --map。
+error-image-exists = { $path } 已存在且没有映射文件。Rescyo 从不覆盖镜像;请换一个文件名,或指定它的 --map。
+error-map-invalid = 无法读取映射文件 { $path }：{ $reason }
+error-map-mismatch = 映射文件描述的磁盘大小为 { $map },而源为 { $source }。
+error-image-cancelled = 已停止。映射文件已保存;再次运行同一命令即可继续。
+hint-image-resume = 映射文件已保存。重新连接磁盘后再次运行同一命令即可继续。

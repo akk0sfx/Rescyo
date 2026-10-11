@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bad_areas": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "bad_bytes": {
+      "description": "Bytes that could not be read; zeros in the image.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "image": {
+      "type": "string"
+    },
+    "map": {
+      "description": "The ddrescue mapfile describing which parts of the image hold real data.",
+      "type": "string"
+    },
+    "rescued": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "resumed": {
+      "description": "The run continued an earlier, interrupted copy.",
+      "type": "boolean"
+    },
+    "size": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "source": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "image",
+    "map",
+    "size",
+    "rescued",
+    "bad_bytes",
+    "bad_areas",
+    "resumed"
+  ],
+  "title": "ImageData",
+  "type": "object"
+}

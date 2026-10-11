@@ -12,6 +12,7 @@ pub mod device;
 mod fingerprint;
 mod guarded;
 mod image;
+pub mod mapfile;
 #[allow(unsafe_code)]
 mod physical;
 #[cfg(any(test, feature = "testing"))]

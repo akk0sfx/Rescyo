@@ -169,3 +169,68 @@ fn json_stream_emits_progress_then_the_envelope() {
     assert!(lines.iter().any(|l| l["type"] == "progress"));
     assert_eq!(lines.last().unwrap()["ok"], true);
 }
+
+#[test]
+fn image_copies_with_a_ddrescue_map_and_scan_honours_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("disk.bin");
+    let data: Vec<u8> = (0..1u32 << 20)
+        .map(|i| (i.wrapping_mul(2_654_435_761) >> 13).to_le_bytes()[0])
+        .collect();
+    std::fs::write(&src, &data).unwrap();
+    let out = dir.path().join("disk.img");
+    let (src_s, out_s) = (src.to_str().unwrap(), out.to_str().unwrap());
+
+    let o = rescyo(&["image", src_s, "--to", out_s, "--block-kib", "64", "--json"]);
+    assert_eq!(o.status.code(), Some(0), "{}", String::from_utf8_lossy(&o.stderr));
+    let v = json(&o);
+    assert_eq!(v["command"], "image");
+    assert_eq!(v["data"]["rescued"], 1u64 << 20);
+    assert_eq!(v["data"]["bad_areas"], 0);
+    assert_eq!(std::fs::read(&out).unwrap(), data);
+    let map = std::fs::read_to_string(dir.path().join("disk.img.map")).unwrap();
+    assert!(map.contains("0x00000000  0x00100000  +"), "{map}");
+
+    // An image without a map is never overwritten.
+    std::fs::remove_file(dir.path().join("disk.img.map")).unwrap();
+    let o = rescyo(&["image", src_s, "--to", out_s, "--json"]);
+    assert_eq!(o.status.code(), Some(1));
+    assert_eq!(json(&o)["error"]["code"], "image_exists");
+
+    // A map with unread areas makes a scan report them as unreadable sectors.
+    let bad_map = dir.path().join("bad.map");
+    std::fs::write(
+        &bad_map,
+        "# Mapfile. Created by GNU ddrescue\n0x00000000 + 1\n#      pos        size  status\n\
+         0x00000000  0x0000C800  +\n0x0000C800  0x00001000  -\n0x0000D800  0x000F2800  +\n",
+    )
+    .unwrap();
+    let session = dir.path().join("s.db");
+    let o = rescyo(&[
+        "scan",
+        out_s,
+        "--session",
+        session.to_str().unwrap(),
+        "--deep",
+        "--map",
+        bad_map.to_str().unwrap(),
+        "--continue-on-errors",
+        "--json",
+    ]);
+    assert_eq!(o.status.code(), Some(0), "{}", String::from_utf8_lossy(&o.stderr));
+    assert_eq!(json(&o)["data"]["unreadable_sectors"], 8);
+
+    // A map for another disk size is refused.
+    std::fs::write(&bad_map, "0x00000000 + 1\n0x00000000  0x00000200  +\n").unwrap();
+    let o = rescyo(&[
+        "scan",
+        out_s,
+        "--session",
+        dir.path().join("t.db").to_str().unwrap(),
+        "--map",
+        bad_map.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(o.status.code(), Some(3));
+    assert_eq!(json(&o)["error"]["code"], "map_size_mismatch");
+}

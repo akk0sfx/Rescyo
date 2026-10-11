@@ -2,6 +2,13 @@
 
 All notable changes are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/). The `--json` output has its own schema version (currently 1).
 
+## [Unreleased]
+
+### Added
+
+- **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
+- `scan`, `import-dmde` and `recover` take `--map` so the unread areas of an image count as unreadable sectors; `recover` no longer re-reads sectors its session already found unreadable.
+
 ## [0.1.0] — 2026-10-11
 
 First alpha: a command-line tool that recovers whole folder trees from FAT12/16/32, exFAT and NTFS, including damaged volumes, without ever writing to the source.
