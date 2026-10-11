@@ -72,3 +72,18 @@ error-map-invalid = 无法读取映射文件 { $path }：{ $reason }
 error-map-mismatch = 映射文件描述的磁盘大小为 { $map },而源为 { $source }。
 error-image-cancelled = 已停止。映射文件已保存;再次运行同一命令即可继续。
 hint-image-resume = 映射文件已保存。重新连接磁盘后再次运行同一命令即可继续。
+
+## Partition search
+partitions-start = 正在 { $source } 上搜索引导扇区…
+partitions-table = 分区表：{ $table }
+partitions-none = 未找到任何卷。
+partition-listed = #{ $number } 位于 { $offset }：{ $fs }{ $label }，{ $size }，在分区表中（{ $boot }）
+partition-lost = 丢失的分区位于 { $offset }（字节 { $bytes }）：{ $fs }{ $label }，{ $size }，不在分区表中（{ $boot }）
+partition-conflicting = 位于 { $offset }（字节 { $bytes }）的卷：{ $fs }{ $label }，{ $size }，与分区表中的条目重叠（{ $boot }）
+partition-nested = 位于 { $offset } 的嵌套卷：{ $fs }{ $label }，{ $size }（{ $boot }）
+partition-empty = #{ $number } 位于 { $offset }，{ $size }：起始处未找到卷
+partition-boot-both = 引导扇区及其备份
+partition-boot-primary = 引导扇区
+partition-boot-backup = 仅有备份引导扇区
+partition-boot-none = 无引导扇区
+partition-unpartitioned = 没有分区表：整个磁盘是一个卷，{ $fs }{ $label }，{ $size }（{ $boot }）

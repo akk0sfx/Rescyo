@@ -1,5 +1,58 @@
 {
   "$defs": {
+    "PartitionRow": {
+      "description": "A volume found by its boot sectors, or a table entry with nothing found at its start.",
+      "properties": {
+        "backup_boot": {
+          "type": "boolean"
+        },
+        "fs": {
+          "description": "`fat12`, `fat16`, `fat32`, `exfat`, `ntfs`, or `unknown` for an empty table entry.",
+          "type": "string"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "number": {
+          "description": "Table entry number, when listed.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "offset": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "primary_boot": {
+          "type": "boolean"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "description": "`listed` (in the table), `lost` (not in the table, free space), `conflicting` (overlaps a\ntable entry), `nested` (inside another volume), `unpartitioned` (no table; the volume starts at\nbyte 0) or `empty` (a table entry with no volume).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "offset",
+        "size",
+        "fs",
+        "status",
+        "primary_boot",
+        "backup_boot"
+      ],
+      "type": "object"
+    },
     "Volume": {
       "properties": {
         "cluster_size": {
@@ -78,6 +131,14 @@
     },
     "partition_table": {
       "type": "string"
+    },
+    "partitions": {
+      "default": [],
+      "description": "Volumes found by their boot sectors (deep scans only).",
+      "items": {
+        "$ref": "#/$defs/PartitionRow"
+      },
+      "type": "array"
     },
     "session": {
       "type": "string"

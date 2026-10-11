@@ -11,6 +11,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - **WOF compression** (`compact /exe:xpress4k|xpress8k|xpress16k|lzx`, used by Windows 10/11 for system files): XPRESS Huffman and LZX decoders written from the public specifications, checked against wimlib.
 - **Named streams** (NTFS alternate data streams): `ls --streams` and `recover --streams` show and recover them as `file:stream` (`file_stream` on Windows and macOS targets).
 - Encrypted (EFS) files are reported as unreadable without the user's key instead of being copied as ciphertext.
+- **Lost partition search**: `rescyo partitions` reads a disk or image once for FAT, exFAT and NTFS boot sectors (primary and backup), confirms each against the volume's FAT, root directory or MFT, and lists what it finds as listed, lost, conflicting, nested or unpartitioned, plus table entries with no volume. Nothing is written; deep scans use the same search and report lost partitions.
 - `scan`, `import-dmde` and `recover` take `--map` so the unread areas of an image count as unreadable sectors; `recover` no longer re-reads sectors its session already found unreadable.
 
 ### Changed

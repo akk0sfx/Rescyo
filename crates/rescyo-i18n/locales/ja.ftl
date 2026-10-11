@@ -72,3 +72,18 @@ error-map-invalid = マップ { $path } を読み取れません：{ $reason }
 error-map-mismatch = マップのディスクサイズは { $map } ですが、ソースは { $source } です。
 error-image-cancelled = 停止しました。マップは保存されています。同じコマンドを再実行すると続行します。
 hint-image-resume = マップは保存されています。ディスクを再接続し、同じコマンドを再実行すると続行します。
+
+## Partition search
+partitions-start = { $source } のブートセクタを検索しています…
+partitions-table = パーティションテーブル：{ $table }
+partitions-none = ボリュームは見つかりませんでした。
+partition-listed = #{ $number }（{ $offset }）：{ $fs }{ $label }、{ $size }、テーブルに記載あり（{ $boot }）
+partition-lost = 失われたパーティション（{ $offset }、バイト { $bytes }）：{ $fs }{ $label }、{ $size }、テーブルに記載なし（{ $boot }）
+partition-conflicting = ボリューム（{ $offset }、バイト { $bytes }）：{ $fs }{ $label }、{ $size }、テーブルの項目と重複（{ $boot }）
+partition-nested = 別のボリューム内のボリューム（{ $offset }）：{ $fs }{ $label }、{ $size }（{ $boot }）
+partition-empty = #{ $number }（{ $offset }、{ $size }）：先頭にボリュームが見つかりません
+partition-boot-both = ブートセクタとバックアップ
+partition-boot-primary = ブートセクタ
+partition-boot-backup = バックアップのブートセクタのみ
+partition-boot-none = ブートセクタなし
+partition-unpartitioned = パーティションテーブルなし：ディスク全体が 1 つのボリューム、{ $fs }{ $label }、{ $size }（{ $boot }）

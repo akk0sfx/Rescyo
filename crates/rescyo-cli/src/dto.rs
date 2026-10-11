@@ -78,6 +78,35 @@ pub struct ScanData {
     pub mode: String,
     pub volumes: Vec<Volume>,
     pub unreadable_sectors: u64,
+    /// Volumes found by their boot sectors (deep scans only).
+    #[serde(default)]
+    pub partitions: Vec<PartitionRow>,
+}
+
+/// A volume found by its boot sectors, or a table entry with nothing found at its start.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PartitionRow {
+    pub offset: u64,
+    pub size: u64,
+    /// `fat12`, `fat16`, `fat32`, `exfat`, `ntfs`, or `unknown` for an empty table entry.
+    pub fs: String,
+    pub label: Option<String>,
+    /// `listed` (in the table), `lost` (not in the table, free space), `conflicting` (overlaps a
+    /// table entry), `nested` (inside another volume), `unpartitioned` (no table; the volume starts at
+    /// byte 0) or `empty` (a table entry with no volume).
+    pub status: String,
+    /// Table entry number, when listed.
+    pub number: Option<u32>,
+    pub primary_boot: bool,
+    pub backup_boot: bool,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PartitionsData {
+    pub source: String,
+    pub partition_table: String,
+    pub partitions: Vec<PartitionRow>,
+    pub unreadable_sectors: u64,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -210,5 +239,6 @@ pub fn schemas() -> Vec<(&'static str, serde_json::Value)> {
         ("recover", s::<RecoverData>()),
         ("info", s::<InfoData>()),
         ("image", s::<ImageData>()),
+        ("partitions", s::<PartitionsData>()),
     ]
 }

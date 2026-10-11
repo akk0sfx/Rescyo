@@ -111,3 +111,18 @@ error-map-invalid = Не удаётся прочитать карту { $path }:
 error-map-mismatch = Карта описывает диск размером { $map }, а у источника { $source }.
 error-image-cancelled = Остановлено. Карта сохранена; запустите ту же команду, чтобы продолжить.
 hint-image-resume = Карта сохранена. Подключите диск снова и запустите ту же команду, чтобы продолжить.
+
+## Partition search
+partitions-start = Ищу загрузочные секторы на { $source }…
+partitions-table = Таблица разделов: { $table }
+partitions-none = Тома не найдены.
+partition-listed = №{ $number } по смещению { $offset }: { $fs }{ $label }, { $size }, есть в таблице ({ $boot })
+partition-lost = Потерянный раздел по смещению { $offset } (байт { $bytes }): { $fs }{ $label }, { $size }, нет в таблице ({ $boot })
+partition-conflicting = Том по смещению { $offset } (байт { $bytes }): { $fs }{ $label }, { $size }, пересекается с разделом из таблицы ({ $boot })
+partition-nested = Том внутри другого тома по смещению { $offset }: { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = №{ $number } по смещению { $offset }, { $size }: в его начале том не найден
+partition-boot-both = загрузочный сектор и копия
+partition-boot-primary = загрузочный сектор
+partition-boot-backup = только резервная копия загрузочного сектора
+partition-boot-none = нет загрузочного сектора
+partition-unpartitioned = Таблицы разделов нет: весь диск — один том, { $fs }{ $label }, { $size } ({ $boot })

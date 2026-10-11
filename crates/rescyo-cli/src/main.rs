@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 use rescyo_core::{
-    DeletedMode, ImportError, ImportOptions, RecoverOptions, ScanMode, ScanOptions, Selection, Session,
-    SessionError, SystemResolver,
+    DeletedMode, ImportError, ImportOptions, PartitionStatus, RecoverOptions, ScanMode, ScanOptions,
+    Selection, Session, SessionError, SystemResolver,
 };
 use rescyo_fs::codepage::Codepage;
 use rescyo_fs::{CancelToken, EntryKind, EntryState};
@@ -207,6 +207,14 @@ enum Command {
     },
     /// Show a session's source, volumes and journal.
     Info { session: PathBuf },
+    /// Read a disk or image for boot sectors and list the volumes found, including partitions
+    /// missing from the table (nothing is written).
+    Partitions {
+        /// Disk or image file.
+        source: String,
+        #[command(flatten)]
+        src: SourceArgs,
+    },
     /// Copy a failing disk to an image file first, skipping bad areas (ddrescue-compatible map).
     Image {
         /// Disk or image file to copy.
@@ -246,6 +254,7 @@ impl Command {
             Self::Recover { .. } => "recover",
             Self::Info { .. } => "info",
             Self::Image { .. } => "image",
+            Self::Partitions { .. } => "partitions",
         }
     }
 }
@@ -347,6 +356,7 @@ fn main() -> ExitCode {
             )
         }
         Command::Info { session } => info(&mut out, session),
+        Command::Partitions { source, src } => partitions(&mut out, source, src, &cancel),
         Command::Image {
             source,
             to,
@@ -528,7 +538,104 @@ fn scan_data(session: &Path, r: &rescyo_core::ScanReport) -> dto::ScanData {
             })
             .collect(),
         unreadable_sectors: r.unreadable_sectors,
+        partitions: r.partitions.iter().map(partition_row).collect(),
     }
+}
+
+fn partition_row(p: &rescyo_core::FoundPartition) -> dto::PartitionRow {
+    dto::PartitionRow {
+        offset: p.offset,
+        size: p.size,
+        fs: p.fs.as_str().into(),
+        label: p.label.clone(),
+        status: match p.status {
+            PartitionStatus::Listed => "listed",
+            PartitionStatus::Lost => "lost",
+            PartitionStatus::Conflicting => "conflicting",
+            PartitionStatus::Nested => "nested",
+            PartitionStatus::Unpartitioned => "unpartitioned",
+        }
+        .into(),
+        number: p.number,
+        primary_boot: p.primary_boot,
+        backup_boot: p.backup_boot,
+    }
+}
+
+fn print_partitions(out: &Out, rows: &[dto::PartitionRow], only_lost: bool) {
+    for p in rows
+        .iter()
+        .filter(|p| !only_lost || p.status == "lost" || p.status == "conflicting")
+    {
+        let boot = match (p.primary_boot, p.backup_boot) {
+            (true, true) => "partition-boot-both",
+            (true, false) => "partition-boot-primary",
+            (false, true) => "partition-boot-backup",
+            (false, false) => "partition-boot-none",
+        };
+        out.say(
+            &out.t(
+                &format!("partition-{}", p.status),
+                &[
+                    ("offset", size(p.offset).into()),
+                    ("bytes", p.offset.into()),
+                    ("size", size(p.size).into()),
+                    ("fs", p.fs.clone().into()),
+                    (
+                        "label",
+                        p.label
+                            .as_ref()
+                            .map(|l| format!(" \"{l}\""))
+                            .unwrap_or_default()
+                            .into(),
+                    ),
+                    ("number", u64::from(p.number.unwrap_or(0)).into()),
+                    ("boot", out.t(boot, &[]).into()),
+                ],
+            ),
+        );
+    }
+}
+
+fn partitions(out: &mut Out, source: &str, src: &SourceArgs, cancel: &CancelToken) -> Result<u8, Failure> {
+    let r = open_source(source, src, BadSectorMap::new())?;
+    out.say(&out.t("partitions-start", &[("source", source.into())]));
+    let rep =
+        rescyo_core::find_partitions(&r, &mut |p| out.progress(p), cancel).map_err(Failure::from_scan)?;
+    out.end_progress();
+    let mut rows: Vec<dto::PartitionRow> = rep.found.iter().map(partition_row).collect();
+    rows.extend(
+        rep.unmatched
+            .iter()
+            .map(|&(number, offset, size)| dto::PartitionRow {
+                offset,
+                size,
+                fs: "unknown".into(),
+                label: None,
+                status: "empty".into(),
+                number: Some(number),
+                primary_boot: false,
+                backup_boot: false,
+            }),
+    );
+    rows.sort_by_key(|p| p.offset);
+    if !out.machine() {
+        out.say(&out.t("partitions-table", &[("table", rep.partition_table.into())]));
+        print_partitions(out, &rows, false);
+        if rows.is_empty() {
+            out.say(&out.t("partitions-none", &[]));
+        }
+        if rep.unreadable_sectors > 0 {
+            out.say(&out.t("scan-bad-sectors", &[("count", rep.unreadable_sectors.into())]));
+        }
+    }
+    out.done(&dto::PartitionsData {
+        source: source.into(),
+        partition_table: rep.partition_table.into(),
+        partitions: rows,
+        unreadable_sectors: rep.unreadable_sectors,
+    });
+    Ok(0)
 }
 
 fn print_scan(out: &Out, d: &dto::ScanData) {
@@ -555,6 +662,7 @@ fn print_scan(out: &Out, d: &dto::ScanData) {
     if walked == 0 {
         out.say(&out.t("scan-no-volumes", &[]));
     }
+    print_partitions(out, &d.partitions, true);
     if d.unreadable_sectors > 0 {
         out.say(&out.t("scan-bad-sectors", &[("count", d.unreadable_sectors.into())]));
     }

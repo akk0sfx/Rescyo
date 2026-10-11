@@ -102,3 +102,18 @@ error-map-invalid = Cannot read the map { $path }: { $reason }
 error-map-mismatch = The map describes a disk of { $map }, but the source has { $source }.
 error-image-cancelled = Stopped. The map is saved; run the same command again to continue.
 hint-image-resume = The map is saved. Reconnect the disk and run the same command again to continue.
+
+## Partition search
+partitions-start = Searching { $source } for boot sectors…
+partitions-table = Partition table: { $table }
+partitions-none = No volumes were found.
+partition-listed = #{ $number } at { $offset }: { $fs }{ $label }, { $size }, in the table ({ $boot })
+partition-lost = Lost partition at { $offset } (byte { $bytes }): { $fs }{ $label }, { $size }, not in the table ({ $boot })
+partition-conflicting = Volume at { $offset } (byte { $bytes }): { $fs }{ $label }, { $size }, overlaps a table entry ({ $boot })
+partition-nested = Volume inside another at { $offset }: { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = #{ $number } at { $offset }, { $size }: no volume found at its start
+partition-boot-both = boot sector and backup
+partition-boot-primary = boot sector
+partition-boot-backup = backup boot sector only
+partition-boot-none = no boot sector
+partition-unpartitioned = No partition table: the whole disk is one volume, { $fs }{ $label }, { $size } ({ $boot })
