@@ -1,0 +1,43 @@
+name: Fuzz
+
+# Every parser of on-disk data is fuzzed: briefly on each pull request, longer every night.
+on:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NIGHTLY: nightly-2026-10-01
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [part_tables, fat_dir, fat_volume, ntfs_record, ntfs_volume, dmde_log]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: fuzz
+          key: ${{ matrix.target }}
+      - run: rustup toolchain install $NIGHTLY --profile minimal
+      - run: cargo +$NIGHTLY install cargo-fuzz --locked --version 0.13.2
+      - name: Run
+        working-directory: fuzz
+        run: |
+          secs=60
+          if [ "${{ github.event_name }}" = "schedule" ]; then secs=900; fi
+          cargo +$NIGHTLY fuzz run ${{ matrix.target }} -- -max_total_time=$secs -rss_limit_mb=2048 -timeout=10
+      - name: Keep crashes
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts
