@@ -11,8 +11,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use super::{
-    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of,
-    foreign_path_candidates, inflate_zlib,
+    ContainerFormat, HostFile, Layout, OpenError, Opened, ParentRef, Piece, dir_of, foreign_path_candidates,
+    inflate_zlib,
 };
 use crate::ReadError;
 use crate::bytes::{slice_at, u16_at, u32_at, u64_at};
@@ -87,11 +87,18 @@ fn parse_extent(line: &str) -> Option<ExtentLine> {
     let (file, tail) = match rest.strip_prefix('"') {
         Some(r) => {
             let end = r.find('"')?;
-            (Some(r.get(..end)?.to_string()), r.get(end + 1..).unwrap_or("").trim())
+            (
+                Some(r.get(..end)?.to_string()),
+                r.get(end + 1..).unwrap_or("").trim(),
+            )
         }
         None => (None, rest),
     };
-    let offset = tail.split_whitespace().next().and_then(|o| o.parse().ok()).unwrap_or(0);
+    let offset = tail
+        .split_whitespace()
+        .next()
+        .and_then(|o| o.parse().ok())
+        .unwrap_or(0);
     Some(ExtentLine {
         sectors,
         kind,
@@ -201,7 +208,9 @@ pub(super) fn open(path: &Path) -> Result<Opened, OpenError> {
             "ZERO" => ExtentKind::Zero,
             "SPARSE" => {
                 let file = file_index(&mut files)?;
-                let host = files.get(file).ok_or_else(|| OpenError::invalid(F, "extent file"))?;
+                let host = files
+                    .get(file)
+                    .ok_or_else(|| OpenError::invalid(F, "extent file"))?;
                 ExtentKind::Sparse(Box::new(open_sparse(host, file, &mut notes)?))
             }
             other => {
@@ -265,13 +274,22 @@ fn open_sparse(host: &HostFile, file: usize, notes: &mut Vec<String>) -> Result<
             .ok_or_else(|| OpenError::invalid(F, "stream-optimized footer is missing or damaged"))?;
     }
     if !header.grain.is_power_of_two() || header.grain < 8 || header.grain > 2048 {
-        return Err(OpenError::invalid(F, format!("grain size {} sectors", header.grain)));
+        return Err(OpenError::invalid(
+            F,
+            format!("grain size {} sectors", header.grain),
+        ));
     }
     if header.gtes_per_gt == 0 || header.gtes_per_gt > 1 << 16 {
-        return Err(OpenError::invalid(F, format!("{} entries per grain table", header.gtes_per_gt)));
+        return Err(OpenError::invalid(
+            F,
+            format!("{} entries per grain table", header.gtes_per_gt),
+        ));
     }
     if header.flags & FLAG_COMPRESSED != 0 && header.compress != 1 {
-        return Err(OpenError::unsupported(F, format!("compression algorithm {}", header.compress)));
+        return Err(OpenError::unsupported(
+            F,
+            format!("compression algorithm {}", header.compress),
+        ));
     }
     let per_gd = header.grain * header.gtes_per_gt;
     let gd_entries = header.capacity.div_ceil(per_gd).min(host.len / 4);
@@ -282,7 +300,13 @@ fn open_sparse(host: &HostFile, file: usize, notes: &mut Vec<String>) -> Result<
         let b = host
             .read_vec(sector.checked_mul(SECTOR)?, usize::try_from(gd_entries * 4).ok()?)
             .ok()?;
-        Some(b.chunks_exact(4).filter_map(|c| u32_at(c, 0)).collect())
+        Some(
+            b.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| u32::from_le_bytes(*c))
+                .collect(),
+        )
     };
     let gd = read_gd(header.gd_offset);
     let rgd = if header.flags & FLAG_REDUNDANT_GT != 0 {
@@ -293,7 +317,10 @@ fn open_sparse(host: &HostFile, file: usize, notes: &mut Vec<String>) -> Result<
     let (gd, rgd) = match (gd, rgd) {
         (Some(g), r) => (g, r),
         (None, Some(r)) => {
-            notes.push(format!("{}: grain directory is damaged; using the redundant copy", host.path.display()));
+            notes.push(format!(
+                "{}: grain directory is damaged; using the redundant copy",
+                host.path.display()
+            ));
             (r, None)
         }
         (None, None) => return Err(OpenError::invalid(F, "grain directory is outside the file")),
@@ -326,7 +353,13 @@ impl Sparse {
         let mut raw = vec![0u8; usize::try_from(self.header.gtes_per_gt * 4).map_err(|_| ReadError::Media)?];
         let at = sector.checked_mul(SECTOR).ok_or(ReadError::Media)?;
         files.get(self.file).ok_or(ReadError::Media)?.read(at, &mut raw)?;
-        let t = Arc::new(raw.chunks_exact(4).filter_map(|c| u32_at(c, 0)).collect::<Vec<_>>());
+        let t = Arc::new(
+            raw.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| u32::from_le_bytes(*c))
+                .collect::<Vec<_>>(),
+        );
         if let Ok(mut c) = self.gt_cache.lock() {
             if c.len() >= 32 {
                 c.remove(0);
@@ -492,7 +525,12 @@ mod tests {
     /// sector 16.
     fn sparse_file(grains: &[Option<Vec<u8>>], descriptor: &str, compressed: bool) -> Vec<u8> {
         let capacity = grains.len() as u64 * GRAIN;
-        let flags = FLAG_REDUNDANT_GT | if compressed { FLAG_COMPRESSED | (1 << 17) } else { 0 };
+        let flags = FLAG_REDUNDANT_GT
+            | if compressed {
+                FLAG_COMPRESSED | (1 << 17)
+            } else {
+                0
+            };
         let mut img = header(capacity, 8, 3, flags, (1, 2));
         img.resize(16 * 512, 0);
         img[512..512 + descriptor.len()].copy_from_slice(descriptor.as_bytes());
