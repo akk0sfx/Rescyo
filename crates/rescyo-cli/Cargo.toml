@@ -17,3 +17,17 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+ctrlc = "3.5.2"
+rescyo-core = { workspace = true }
+rescyo-dmde = { workspace = true }
+rescyo-fs = { workspace = true }
+rescyo-i18n = { workspace = true }
+rescyo-io = { workspace = true }
+schemars = "1.2.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[dev-dependencies]
+rescyo-testkit = { path = "../rescyo-testkit" }
+tempfile = "3.27.0"

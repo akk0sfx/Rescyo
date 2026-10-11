@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "JournalRow": {
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "detail": true,
+        "time": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "time",
+        "action",
+        "detail"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "journal": {
+      "items": {
+        "$ref": "#/$defs/JournalRow"
+      },
+      "type": "array"
+    },
+    "session": {
+      "type": "string"
+    },
+    "source_kind": {
+      "type": "string"
+    },
+    "source_path": {
+      "type": "string"
+    },
+    "source_size": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "source_unverified": {
+      "type": "boolean"
+    },
+    "unreadable_sectors": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "volumes": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "session",
+    "source_path",
+    "source_kind",
+    "source_size",
+    "source_unverified",
+    "volumes",
+    "entries",
+    "unreadable_sectors",
+    "journal"
+  ],
+  "title": "InfoData",
+  "type": "object"
+}

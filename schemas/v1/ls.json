@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "EntryRow": {
+      "properties": {
+        "assembly": {
+          "description": "How the bytes were found: `fat_chain`, `fat_chain_mirror`, `mft_runlist`, …",
+          "type": "string"
+        },
+        "id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "description": "`file` or `directory`.",
+          "type": "string"
+        },
+        "modified": {
+          "description": "RFC 3339; local-zone stamps (FAT) carry no offset.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "description": "`live` or `deleted`.",
+          "type": "string"
+        },
+        "volume": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "volume",
+        "path",
+        "kind",
+        "state",
+        "size",
+        "assembly"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/EntryRow"
+      },
+      "type": "array"
+    },
+    "total": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "entries",
+    "total"
+  ],
+  "title": "LsData",
+  "type": "object"
+}

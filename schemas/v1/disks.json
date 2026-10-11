@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "Disk": {
+      "properties": {
+        "logical_sector": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "removable": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "serial": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "disks": {
+      "items": {
+        "$ref": "#/$defs/Disk"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "disks"
+  ],
+  "title": "DisksData",
+  "type": "object"
+}
