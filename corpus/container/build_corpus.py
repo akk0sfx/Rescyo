@@ -178,6 +178,12 @@ def tree_ops(cluster: int, part_size: int):
     f("sizes/cluster_plus_one.bin", c + 1)
     for i in range(many):
         f(f"many/file_{i:03d}.txt", 50 + (i * 37) % 150)
+    # Files deleted at the end are written before the fragmentation step, so they are
+    # contiguous on every file system (exFAT and NTFS cannot report fragmentation here).
+    f("trash/deleted_photo.jpg", 4 * c + 100)
+    f("trash/удалённый документ.txt", 900)
+    f("olddir/a.txt", 1500)
+    f("olddir/b.bin", 2 * c)
     # Fragmentation: fill, punch holes, then write a file larger than any hole.
     for i in range(8):
         f(f"frag/filler_{i}.bin", 3 * c, temp=True)
@@ -185,10 +191,6 @@ def tree_ops(cluster: int, part_size: int):
         ops.append(("delete", f"frag/filler_{i}.bin", None, {"temp": True}))
     ops.append(("reset_hint", "", None, {}))
     f("frag/fragmented.bin", 10 * c)
-    f("trash/deleted_photo.jpg", 4 * c + 100)
-    f("trash/удалённый документ.txt", 900)
-    f("olddir/a.txt", 1500)
-    f("olddir/b.bin", 2 * c)
     ops.append(("delete", "trash/deleted_photo.jpg", None, {}))
     ops.append(("delete", "trash/удалённый документ.txt", None, {}))
     ops.append(("delete", "olddir/a.txt", None, {}))
