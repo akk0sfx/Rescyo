@@ -43,6 +43,8 @@ problem-file-too-large = { $path } 大小为 { $size }，超过目标文件系�
 problem-nothing-selected = 没有符合所选条件的项目。
 
 error-source-open = 无法打开 { $source }：{ $reason }
+error-image-unsupported = 无法打开 { $source }：{ $reason }。请先将其转换为原始镜像（例如使用 qemu-img）再打开。
+error-parent-missing = { $source } 是差异镜像，未找到其父镜像（已尝试：{ $tried }）。请将父镜像放在它旁边。
 error-source-mismatch = { $source } 不是创建此会话时使用的源（{ $reason }）。仅在确定时使用 --force-rebind。
 error-session-exists = { $path } 已存在。Rescyo 绝不覆盖会话，请换一个文件名。
 error-session-invalid = { $path } 不是 Rescyo 会话：{ $reason }
@@ -59,6 +61,8 @@ hint-admin = 读取磁盘需要 Windows 管理员权限，或在 Linux 和 macOS
 
 ## Imaging
 image-start = 正在将 { $source } 制作镜像到 { $image }（映射文件：{ $map }）…
+container-opened = { $format } 镜像：虚拟磁盘 { $size }，共 { $files } 个文件。
+container-note = 镜像提示：{ $note }
 phase-image-copy = 复制
 phase-image-trim = 修剪坏区
 phase-image-scrape = 逐扇区读取坏区

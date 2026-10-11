@@ -44,6 +44,14 @@ _Avoid_: cloning, backup
 The ddrescue mapfile kept next to an image, saying for every byte range whether it was rescued, is still pending or is unreadable. A Scan of the image takes it as the image's Bad-sector map.
 _Avoid_: log file
 
+**Container**:
+An image file that stores a virtual disk through tables rather than byte for byte: VHD, VHDX, VMDK, qcow2 or E01. Rescyo reads the virtual disk it describes; damage inside a Container makes only the affected ranges unreadable.
+_Avoid_: virtual disk file, VM image (in user-facing text, name the format)
+
+**Parent image**:
+The image a differencing Container (VHD differencing, VHDX child, qcow2 overlay, VMDK delta) reads unwritten ranges from. It is looked up next to the child and through the paths the child records.
+_Avoid_: base, backing store
+
 ### Volumes and hints
 
 **Volume candidate**:
