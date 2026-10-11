@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-cli"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "clap",
  "ctrlc",
@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-core"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "chrono",
  "rescyo-dmde",
@@ -696,7 +696,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-dmde"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "rescyo-fs",
  "thiserror",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-fat"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-fs"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "encoding_rs",
  "rescyo-io",
@@ -729,7 +729,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-i18n"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "fluent-bundle",
  "fluent-syntax",
@@ -739,7 +739,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-io"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "libc",
  "sha2",
@@ -750,7 +750,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-ntfs"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-part"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "crc32fast",
  "rescyo-io",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-testkit"
-version = "0.1.0-dev"
+version = "0.1.0"
 dependencies = [
  "rescyo-io",
  "serde",

@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#対応プラットフォーム)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -26,8 +26,8 @@ Rescyo は、破損・フォーマット済み・一部読み取り不能にな�
 
 DMDE、R-Studio、UFS Explorer の無料オープンソース代替ソフトです。
 
-> [!WARNING]
-> **プレアルファ。** まだリリースはありません。v0.1.0 がバイト単位の復旧検証に合格するまで、重要なデータには使用しないでください。
+> [!IMPORTANT]
+> **アルファ版（v0.1）。** コマンドラインで FAT、exFAT、NTFS を復旧でき、バイト単位の復旧テストに合格していますが、署名付きバイナリはまだありません。必ず別のディスクに復旧し、故障しかけたディスクは先にイメージを取得してください。
 
 ## Rescyo の特長
 
