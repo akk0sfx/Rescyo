@@ -59,3 +59,54 @@ jobs:
                    | grep -v '^corpus/container/' \
                    | xargs -r grep -nE "$pattern" || true)
           if [ -n "$hits" ]; then echo "$hits"; exit 1; fi
+
+  physical:
+    # Disposable runners only: an image is attached read-only as a block device (ADR-0002).
+    name: physical disk backend (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      RESCYO_CI_DISPOSABLE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Build test binary
+        run: cargo test -p rescyo-io --test physical_ci --no-run --locked
+      - name: Attach image (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          head -c 8388608 /dev/urandom > "$RUNNER_TEMP/disk.img"
+          dev=$(sudo losetup --read-only --find --show "$RUNNER_TEMP/disk.img")
+          sudo chmod a+r "$dev"
+          echo "RESCYO_CI_DEVICE=$dev" >> "$GITHUB_ENV"
+          echo "RESCYO_CI_IMAGE=$RUNNER_TEMP/disk.img" >> "$GITHUB_ENV"
+      - name: Attach image (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          head -c 8388608 /dev/urandom > "$RUNNER_TEMP/disk.img"
+          dev=$(hdiutil attach -readonly -nomount -imagekey diskimage-class=CRawDiskImage "$RUNNER_TEMP/disk.img" | head -1 | awk '{print $1}')
+          raw="/dev/r${dev#/dev/}"
+          sudo chmod a+r "$raw"
+          echo "RESCYO_CI_DEVICE=$raw" >> "$GITHUB_ENV"
+          echo "RESCYO_CI_IMAGE=$RUNNER_TEMP/disk.img" >> "$GITHUB_ENV"
+      - name: Attach image (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vhd = Join-Path $env:RUNNER_TEMP 'disk.vhd'
+          "create vdisk file=`"$vhd`" maximum=8 type=fixed" | Set-Content dp1.txt
+          diskpart /s dp1.txt | Out-Null
+          # A fixed VHD is raw sectors followed by a 512-byte footer: fill the data part.
+          $bytes = New-Object byte[] 8388608
+          [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+          $fs = [System.IO.File]::OpenWrite($vhd); $fs.Write($bytes, 0, $bytes.Length); $fs.Close()
+          [System.IO.File]::WriteAllBytes((Join-Path $env:RUNNER_TEMP 'disk.img'), $bytes)
+          Mount-DiskImage -ImagePath $vhd -Access ReadOnly -NoDriveLetter | Out-Null
+          $n = (Get-DiskImage -ImagePath $vhd | Get-Disk).Number
+          "RESCYO_CI_DEVICE=\\.\PhysicalDrive$n" | Out-File -Append $env:GITHUB_ENV
+          "RESCYO_CI_IMAGE=$(Join-Path $env:RUNNER_TEMP 'disk.img')" | Out-File -Append $env:GITHUB_ENV
+      - name: Run physical test
+        run: cargo test -p rescyo-io --test physical_ci --locked -- --nocapture
