@@ -25,18 +25,15 @@ pub fn volume_offset(r: &GuardedReader) -> u64 {
 }
 
 pub fn read_layout(r: &GuardedReader, extents: &[Extent]) -> Vec<u8> {
+    let layout = rescyo_fs::DataLayout {
+        extents: extents.to_vec(),
+    };
     let mut out = Vec::new();
-    for e in extents {
-        match e {
-            Extent::Disk { offset, len } => {
-                let mut b = vec![0u8; *len as usize];
-                r.read(*offset, &mut b).unwrap();
-                out.extend_from_slice(&b);
-            }
-            Extent::Zero { len } => out.resize(out.len() + *len as usize, 0),
-            Extent::Inline { data } => out.extend_from_slice(data),
-        }
-    }
+    rescyo_fs::content::stream(r, &layout, layout.len(), &mut |d, _| {
+        out.extend_from_slice(d);
+        Ok(())
+    })
+    .unwrap();
     out
 }
 

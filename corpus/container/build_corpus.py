@@ -88,13 +88,97 @@ def ooxml_sized(seed: str, size: int, kind: str) -> bytes:
     return build(max(size - len(base), 0))
 
 
-def content_for(path: str, seed: str, size: int) -> bytes:
+def content_for(path: str, seed: str, size: int, style: str | None = None) -> bytes:
+    if style:
+        return styled(seed, size, style)
     lower = path.lower()
     if lower.endswith((".jpg", ".jpeg")):
         return jpeg_sized(seed, size)
     if lower.endswith((".docx", ".xlsx")):
         return ooxml_sized(seed, size, lower.rsplit(".", 1)[1])
     return payload(seed, size)
+
+
+WORDS = ("rescyo recovers folder trees from damaged volumes without writing to the source "
+         "отчёт баланс архив 写真 東京 사진 compression unit cluster record stream chunk").split()
+
+
+def styled(seed: str, size: int, style: str) -> bytes:
+    """Compressible content for the compression scenarios.
+
+    text: word salad; mixed: 64 KiB of text, then 64 KiB of noise, alternating; code: what an
+    executable looks like to a compressor (x86 CALLs, tables, strings, zeros, some noise)."""
+    import random
+    rnd = random.Random(seed)
+    out = bytearray()
+    if style == "text":
+        while len(out) < size:
+            out += (" ".join(rnd.choice(WORDS) for _ in range(12)) + ".\n").encode()
+    elif style == "mixed":
+        i = 0
+        while len(out) < size:
+            block = styled(f"{seed}:{i}", 65536, "text") if i % 2 == 0 else payload(f"{seed}:{i}", 65536)
+            out += block
+            i += 1
+    elif style == "code":
+        while len(out) < size:
+            k = rnd.randrange(6)
+            if k == 0:
+                for _ in range(64):
+                    out += b"\x55\x8b\xec\xe8" + struct.pack("<i", rnd.randrange(-50000, 50000)) + b"\x5d\xc3"
+            elif k == 1:
+                out += bytes(rnd.randrange(64, 2048))
+            elif k == 2:
+                out += b"".join(struct.pack("<I", 0x401000 + 16 * j) for j in range(rnd.randrange(16, 256)))
+            elif k == 3:
+                out += (" ".join(rnd.choice(WORDS) for _ in range(40)) + "\0").encode("utf-16-le")
+            elif k == 4:
+                out += payload(f"{seed}:{len(out)}", rnd.randrange(200, 3000))
+            else:
+                out += bytes([0xE8]) * rnd.randrange(1, 40)
+    else:
+        raise SystemExit(f"unknown style {style}")
+    return bytes(out[:size])
+
+
+WOF_ALGORITHMS = {"xpress4k": (0, "XPRESS", 4096), "lzx": (1, "LZX", 32768),
+                  "xpress8k": (2, "XPRESS", 8192), "xpress16k": (3, "XPRESS", 16384)}
+
+
+def wof_stream(data: bytes, algorithm: str) -> bytes:
+    """The WofCompressedData stream for `data`: wimlib compresses it as a WIM resource, whose
+    chunk table and chunks have exactly the WOF layout."""
+    _, kind, chunk = WOF_ALGORITHMS[algorithm]
+    work = Path(tempfile.mkdtemp(prefix="wof-"))
+    (work / "src").mkdir()
+    (work / "src" / "f").write_bytes(data)
+    run("wimlib-imagex", "capture", work / "src", work / "f.wim", f"--compress={kind}",
+        f"--chunk-size={chunk}", "--no-acls")
+    b = (work / "f.wim").read_bytes()
+    shutil.rmtree(work)
+    if b[:8] != b"MSWIM\0\0\0":
+        raise SystemExit("wimlib wrote something that is not a WIM")
+
+    def reshdr(o):
+        (size_flags,) = struct.unpack_from("<Q", b, o)
+        off, orig = struct.unpack_from("<QQ", b, o + 8)
+        return size_flags & ((1 << 56) - 1), size_flags >> 56, off, orig
+
+    lt_size, _, lt_off, _ = reshdr(48)
+    for o in range(lt_off, lt_off + lt_size, 50):
+        size, flags, off, orig = reshdr(o)
+        if orig == len(data) and not flags & 0x02:
+            if not flags & 0x04:
+                raise SystemExit(f"{algorithm}: wimlib stored the test data uncompressed")
+            return b[off:off + size]
+    raise SystemExit(f"{algorithm}: resource not found in the WIM")
+
+
+def wof_reparse(algorithm: str) -> bytes:
+    """REPARSE_DATA_BUFFER of a WOF file: tag, length, WOF_EXTERNAL_INFO (version 1, provider 2 =
+    file) and FILE_PROVIDER_EXTERNAL_INFO_V1 (version 1, algorithm)."""
+    alg = WOF_ALGORITHMS[algorithm][0]
+    return struct.pack("<IHHIIII", 0x80000017, 16, 0, 1, 2, 1, alg)
 
 
 def run(*cmd, **kw):
@@ -164,7 +248,8 @@ class FuseFs:
         self.mnt = Path(tempfile.mkdtemp(prefix="fs-"))
         self.loop = None
         if kind == "ntfs":
-            run("ntfs-3g", "-o", "big_writes", part, self.mnt)
+            # Named streams as `file:stream`; new files in compressed folders get compressed.
+            run("ntfs-3g", "-o", "big_writes,streams_interface=windows,compression", part, self.mnt)
         else:
             # exfat-fuse running as root insists on a block device: use a loop device of the
             # container's VM (never a host device; the container is the isolation, ADR-0002).
@@ -183,6 +268,28 @@ class FuseFs:
 
     def reset_alloc_hint(self):
         pass
+
+    def compress_dir(self, path):
+        # FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_COMPRESSED, big-endian.
+        run("setfattr", "-h", "-v", "0x00000810", "-n", "system.ntfs_attrib_be", self.mnt / path)
+
+    def write_streams(self, path, streams: dict, mtime: int):
+        for name, data in streams.items():
+            with open(f"{self.mnt / path}:{name}", "wb") as f:
+                f.write(data)
+        os.utime(self.mnt / path, (mtime, mtime))
+
+    def write_wof(self, path, data: bytes, algorithm: str, mtime: int):
+        """A WOF-compressed file as Windows leaves it: the unnamed stream sparse at the original
+        size, the content in WofCompressedData, and the WOF reparse point."""
+        target = self.mnt / path
+        with open(target, "wb") as f:
+            f.truncate(len(data))
+        with open(f"{target}:WofCompressedData", "wb") as f:
+            f.write(wof_stream(data, algorithm))
+        os.utime(target, (mtime, mtime))
+        run("setfattr", "-h", "-v", "0x" + wof_reparse(algorithm).hex(), "-n",
+            "system.ntfs_reparse_data", target)
 
     def delete(self, path):
         (self.mnt / path).unlink()
@@ -259,6 +366,27 @@ def tree_ops(cluster: int, part_size: int):
     return ops
 
 
+def feature_ops(features):
+    """Extra NTFS content: compressed files, named streams, WOF files. Returns (ops, deletions)."""
+    ops, late = [], []
+    if "compression" in features:
+        ops.append(("mkdir", "compressed", None, {"compress": True}))
+        ops.append(("write", "compressed/report.txt", 300_000, {"style": "text"}))
+        ops.append(("write", "compressed/mixed.bin", 5 * 65536 + 1234, {"style": "mixed"}))
+        ops.append(("write", "compressed/zeros_then_text.log", 200_000, {"style": "zeros_text"}))
+        ops.append(("write", "compressed/tiny.txt", 300, {"style": "text"}))
+        ops.append(("write", "compressed/removed.txt", 120_000, {"style": "text"}))
+        late.append(("delete", "compressed/removed.txt", None, {}))
+    if "streams" in features:
+        ops.append(("mkdir", "streams", None, {}))
+        ops.append(("write", "streams/host.txt", 2000, {"streams": {"summary": 5000, "Zone.Identifier": 120}}))
+    if "wof" in features:
+        ops.append(("mkdir", "wof", None, {}))
+        for alg, size in [("xpress4k", 70_000), ("xpress8k", 50_001), ("xpress16k", 90_000), ("lzx", 150_000)]:
+            ops.append(("write", f"wof/{alg}.dll", size, {"style": "code", "wof": alg}))
+    return ops, late
+
+
 def populate(fs, ops, scenario):
     files, dirs = {}, {}
     tmp = Path(tempfile.mkdtemp(prefix="payload-")) / "data"
@@ -267,11 +395,35 @@ def populate(fs, ops, scenario):
     for op, path, size, flags in ops:
         if op == "mkdir":
             fs.mkdir(path)
+            if flags.get("compress"):
+                fs.compress_dir(path)
             dirs[path] = "live"
         elif op == "write":
-            data = content_for(path, f"{scenario}:{path}", size)
+            style = flags.get("style")
+            if style == "zeros_text":
+                data = bytes(size // 2) + styled(f"{scenario}:{path}", size - size // 2, "text")
+            else:
+                data = content_for(path, f"{scenario}:{path}", size, style)
             mtime += 2
-            fs.write(path, data, tmp, mtime)
+            if flags.get("wof"):
+                fs.write_wof(path, data, flags["wof"], mtime)
+            else:
+                fs.write(path, data, tmp, mtime)
+            for name, n in flags.get("streams", {}).items():
+                sdata = styled(f"{scenario}:{path}:{name}", n, "text")
+                files[f"{path}:{name}"] = {
+                    "path": f"{path}:{name}",
+                    "size": n,
+                    "sha256": hashlib.sha256(sdata).hexdigest(),
+                    "state": "live",
+                    "in_root": False,
+                    "fragmented": None,
+                    "mtime": mtime,
+                    "stream": True,
+                }
+                flags.setdefault("_streams", {})[name] = sdata
+            if flags.get("_streams"):
+                fs.write_streams(path, flags["_streams"], mtime)
             if not flags.get("temp"):
                 files[path] = {
                     "path": path,
@@ -418,7 +570,11 @@ def build(manifest: Path, out_root: Path):
     work = Path(tempfile.mkdtemp(prefix=f"{name}-"))
     part = work / "part.img"
     fs = make_volume(sc, part)
-    files, dirs = populate(fs, tree_ops(sc["cluster"], sc["size_mib"] * MIB), name)
+    ops = tree_ops(sc["cluster"], sc["size_mib"] * MIB)
+    extra, late = feature_ops(sc.get("features", []))
+    # Extra files go before the deletions, so nothing reuses the clusters of deleted files.
+    cut = max(i for i, o in enumerate(ops) if o[0] == "write") + 1
+    files, dirs = populate(fs, ops[:cut] + extra + ops[cut:] + late, name)
     image = out / "image.img"
     start, part_size = assemble(sc, part, image)
     layout, damage = layout_of(sc["fs"], image, start, part_size)
@@ -442,6 +598,7 @@ def build(manifest: Path, out_root: Path):
             "mtools": tool_version(["mtools", "--version"]),
             "mkfs.exfat": tool_version(["mkfs.exfat", "-V"]),
             "ntfs-3g": tool_version(["ntfs-3g", "--version"]),
+            "wimlib": tool_version(["wimlib-imagex", "--version"]),
         },
     }
     (out / "expected.json").write_text(json.dumps(expected, ensure_ascii=False, indent=2) + "\n")

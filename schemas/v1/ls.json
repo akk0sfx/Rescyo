@@ -12,7 +12,7 @@
           "type": "integer"
         },
         "kind": {
-          "description": "`file` or `directory`.",
+          "description": "`file` or `directory`.\n`file`, `directory` or `stream` (a named stream, shown as `file:stream`).",
           "type": "string"
         },
         "modified": {

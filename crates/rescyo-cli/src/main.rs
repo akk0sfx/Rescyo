@@ -94,6 +94,9 @@ struct SelectArgs {
     /// Only this volume (from `volumes`).
     #[arg(long)]
     volume: Option<i64>,
+    /// Include alternate data streams (shown and recovered as `file:stream`).
+    #[arg(long)]
+    streams: bool,
 }
 
 impl SelectArgs {
@@ -113,6 +116,7 @@ impl SelectArgs {
                 .collect(),
             path_prefix: self.path.clone(),
             volume: self.volume,
+            streams: self.streams,
         }
     }
 }
@@ -711,7 +715,7 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
     let s = open_session(session)?;
     let sel = select.selection();
     let entries = s
-        .entries(|e| dirs || e.entry.kind == EntryKind::File)
+        .entries(|e| dirs || e.entry.kind != EntryKind::Directory)
         .map_err(|e| Failure::session(session, e))?;
     let mut rows = Vec::new();
     for e in entries {
@@ -726,6 +730,7 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
             kind: match e.entry.kind {
                 EntryKind::File => "file".into(),
                 EntryKind::Directory => "directory".into(),
+                EntryKind::Stream => "stream".into(),
             },
             state: match e.entry.state {
                 EntryState::Live => "live".into(),

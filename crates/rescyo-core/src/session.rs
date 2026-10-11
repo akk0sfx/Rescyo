@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use rescyo_fs::{
-    AssemblyMethod, DataLayout, Entry, EntryId, EntryKind, EntryState, Extent, Note, Parent, Phase, ScanSink,
-    SeedOrigin, SinkError, TimeZone, Times, Timestamp, VolumeCandidate,
+    AssemblyMethod, Codec, DataLayout, Entry, EntryId, EntryKind, EntryState, Extent, Note, Parent, Phase,
+    ScanSink, SeedOrigin, SinkError, TimeZone, Times, Timestamp, VolumeCandidate,
 };
 use rescyo_io::{BadSectorMap, FingerprintMatch, Sample, SourceFingerprint, SourceIdentity, SourceKind};
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 
 /// `RESC` in the SQLite header, so `file` and Rescyo itself recognise a Session.
 const APPLICATION_ID: i32 = 0x5245_5343;
-const SCHEMA_VERSION: i32 = 1;
+/// 2 added encoded (compressed) extents and named streams; older Rescyo refuses such Sessions
+/// rather than reading compressed data as zeros.
+const SCHEMA_VERSION: i32 = 2;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionError {
@@ -137,6 +139,13 @@ fn kind_from(s: &str) -> SourceKind {
 
 fn i(v: u64) -> i64 {
     i64::try_from(v).unwrap_or(i64::MAX)
+}
+
+/// How an encoded extent is stored in the `data` column.
+#[derive(Serialize, Deserialize)]
+struct EncodedDto {
+    codec: Codec,
+    stored: Vec<Extent>,
 }
 
 fn u(v: i64) -> u64 {
@@ -418,7 +427,18 @@ impl Session {
                     "inline" => Extent::Inline {
                         data: x.get::<_, Option<Vec<u8>>>(3)?.unwrap_or_default(),
                     },
-                    _ => Extent::Zero { len },
+                    "zero" => Extent::Zero { len },
+                    "encoded" => {
+                        let blob = x.get::<_, Option<Vec<u8>>>(3)?.unwrap_or_default();
+                        let enc: EncodedDto = serde_json::from_slice(&blob)
+                            .map_err(|e| SessionError::Corrupt(e.to_string()))?;
+                        Extent::Encoded {
+                            codec: enc.codec,
+                            stored: enc.stored,
+                            len,
+                        }
+                    }
+                    other => return Err(SessionError::Corrupt(format!("unknown extent kind {other:?}"))),
                 });
             }
             out.push(e);
@@ -641,6 +661,14 @@ impl<'a> SessionSink<'a> {
                     i(data.len() as u64),
                     data
                 ])?,
+                Extent::Encoded { codec, stored, len } => {
+                    let blob = serde_json::to_vec(&EncodedDto {
+                        codec: *codec,
+                        stored: stored.clone(),
+                    })
+                    .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+                    st.execute(params![id, seq, "encoded", None::<i64>, i(*len), blob])?
+                }
             };
         }
         Ok(id)

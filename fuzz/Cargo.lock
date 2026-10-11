@@ -209,6 +209,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "rescyo-codec"
+version = "0.1.0"
+
+[[package]]
 name = "rescyo-dmde"
 version = "0.1.0"
 dependencies = [
@@ -232,6 +236,7 @@ name = "rescyo-fs"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",
+ "rescyo-codec",
  "rescyo-io",
  "serde",
  "serde_json",
@@ -243,6 +248,7 @@ name = "rescyo-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
+ "rescyo-codec",
  "rescyo-dmde",
  "rescyo-fat",
  "rescyo-fs",
