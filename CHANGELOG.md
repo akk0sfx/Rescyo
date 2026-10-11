@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **File carving**: `scan --deep --carve` finds JPEG, PNG, GIF, PDF, ZIP-based documents (docx, xlsx, pptx, odt, epub…), MP4/MOV/HEIF, WAV/AVI/WEBP and BMP files by their own structure where no file system describes them, follows each to its real end (never a guessed length), and keeps them in a separate `carved` volume, one folder per type; recovery verifies their content like any other file.
+
 ## [0.2.0] — 2026-10-12
 
 Second alpha: image a dying disk before touching it, find partitions the table lost, and read the NTFS files Windows compresses.
