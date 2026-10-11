@@ -1,0 +1,25 @@
+[package]
+name = "rescyo-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Not part of the main workspace: fuzzing needs nightly and libFuzzer.
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rescyo-io = { path = "../crates/rescyo-io", features = ["testing"] }
+rescyo-part = { path = "../crates/rescyo-part" }
+
+[[bin]]
+name = "part_tables"
+path = "fuzz_targets/part_tables.rs"
+test = false
+doc = false
+bench = false

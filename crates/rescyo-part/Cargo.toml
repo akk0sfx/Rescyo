@@ -13,3 +13,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+crc32fast = "1.5.2"
+rescyo-io = { workspace = true }
+thiserror = "2.0.21"
+
+[dev-dependencies]
+rescyo-io = { workspace = true, features = ["testing"] }
+rescyo-testkit = { workspace = true }
