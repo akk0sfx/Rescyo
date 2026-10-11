@@ -772,6 +772,7 @@ name = "rescyo-io"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "miniz_oxide",
  "sha2",
  "tempfile",
  "thiserror",

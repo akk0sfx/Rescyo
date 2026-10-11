@@ -7,6 +7,7 @@
 
 mod badmap;
 pub mod bytes;
+pub mod container;
 #[allow(unsafe_code)]
 pub mod device;
 mod fingerprint;
@@ -22,6 +23,7 @@ use std::fmt;
 use std::ops::Range;
 
 pub use badmap::BadSectorMap;
+pub use container::{ContainerFormat, ContainerInfo, ContainerSource, OpenError, open_image};
 pub use fingerprint::{FingerprintMatch, Sample, SourceFingerprint};
 pub use guarded::{GuardError, GuardedReader, ReadPolicy, ReadReport};
 pub use image::ImageSource;
