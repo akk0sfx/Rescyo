@@ -23,6 +23,8 @@ ls-total = 항목 { $count }개
 
 recover-plan = 파일 { $files }개, { $size }, 대상: { $target }
 recover-done = 파일 { $files }개({ $size })를 복구했습니다. 보고서: { $report }
+recover-intact = 파일 { $count }개를 형식에 맞게 검증했으며 손상이 없습니다.
+recover-damaged = 파일 { $count }개가 형식에 맞게 읽히지 않습니다. 보고서를 확인하십시오.
 recover-partial = 파일 { $count }개에 0으로 채운 읽을 수 없는 부분이 있습니다. 보고서를 확인하십시오.
 recover-guessed = 파일 { $count }개는 할당 정보 없이 연속된 것으로 가정해 읽었습니다. 사용하기 전에 확인하십시오.
 recover-resumed = 파일 { $count }개는 이전 실행에서 이미 대상에 있었고 검증되었습니다.

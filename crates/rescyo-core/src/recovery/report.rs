@@ -28,6 +28,9 @@ pub struct FileRecord {
     pub state: EntryState,
     pub assembly: AssemblyMethod,
     pub integrity: Integrity,
+    /// Why the content check failed, when `integrity` is `damaged`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integrity_detail: Option<String>,
     pub sha256: Option<String>,
     /// Byte ranges of the file `[start, length]` that were unreadable and written as zeros.
     pub unreadable: Vec<[u64; 2]>,
