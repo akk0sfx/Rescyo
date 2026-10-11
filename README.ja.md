@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.2-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#対応プラットフォーム)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -27,7 +27,7 @@ Rescyo は、破損・フォーマット済み・一部読み取り不能にな�
 DMDE、R-Studio、UFS Explorer の無料オープンソース代替ソフトです。
 
 > [!IMPORTANT]
-> **アルファ版（v0.1）。** コマンドラインで FAT、exFAT、NTFS を復旧でき、バイト単位の復旧テストに合格していますが、署名付きバイナリはまだありません。必ず別のディスクに復旧し、故障しかけたディスクは先にイメージを取得してください。
+> **アルファ版（v0.2）。** コマンドラインで FAT、exFAT、NTFS（圧縮ファイルと代替データストリームを含む）を復旧でき、故障しかけたディスクを ddrescue 互換のマップ付きでイメージ化し、失われたパーティションを検出できます。バイト単位の復旧テストに合格していますが、署名付きバイナリはまだありません。必ず別のディスクに復旧し、故障しかけたディスクは先にイメージを取得してください。
 
 ## Rescyo の特長
 
@@ -72,11 +72,13 @@ cd Rescyo
 cargo build --release
 ```
 
-予定している v0.1 のコマンド：
+コマンドの例：
 
 ```sh
 rescyo disks --json                              # ディスク一覧
 rescyo scan /dev/sdb --session flash.db          # ボリュームとフォルダーを検出（読み取り専用）
+rescyo image /dev/sdb --to /mnt/backup/flash.img  # 故障しかけたディスク：まずイメージ化（再開可能）
+rescyo partitions /dev/sdb                       # テーブルにないパーティションを検出
 rescyo ls flash.db --deleted --ext jpg,docx      # 見つかったファイルを閲覧
 rescyo recover flash.db --to /mnt/backup/flash   # SHA-256 レポート付きで書き出し
 ```
@@ -98,7 +100,7 @@ flowchart LR
 |---|---|---|
 | FAT12、FAT16、FAT32 | 完全：失われたボリューム、フォルダーツリー、削除済みファイル | v0.1 |
 | exFAT | 完全 | v0.1 |
-| NTFS | 完全：MFT、削除済みファイル。圧縮・スパース・ADS は v0.2 | v0.1 |
+| NTFS | 完全：MFT、削除済みファイル、スパースファイル。圧縮（LZNT1）・WOF 圧縮（XPRESS、LZX）ファイルと代替データストリームは v0.2 から | v0.1 |
 | ext4、HFS+、APFS、Btrfs | 実験的 | v0.3–v0.4 |
 
 ## 対応プラットフォーム
