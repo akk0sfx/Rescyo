@@ -394,6 +394,7 @@ name = "rescyo-core"
 version = "0.1.0-dev"
 dependencies = [
  "chrono",
+ "rescyo-dmde",
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",
@@ -412,6 +413,10 @@ dependencies = [
 [[package]]
 name = "rescyo-dmde"
 version = "0.1.0-dev"
+dependencies = [
+ "rescyo-fs",
+ "thiserror",
+]
 
 [[package]]
 name = "rescyo-fat"
