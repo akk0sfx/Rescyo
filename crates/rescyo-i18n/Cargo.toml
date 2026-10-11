@@ -13,3 +13,9 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+fluent-bundle = "0.16.0"
+sys-locale = "0.3.2"
+unic-langid = "0.9.6"
+
+[dev-dependencies]
+fluent-syntax = "0.12.0"

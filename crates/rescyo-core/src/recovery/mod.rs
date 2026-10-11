@@ -160,8 +160,11 @@ pub fn check_destination(
     allow_unverified: bool,
 ) -> std::result::Result<bool, Problem> {
     let src = match resolver.source(source) {
+        // An image (or a remote source) occupies no local disk that a write could damage, so
+        // the Target's placement does not matter.
+        Placement::Local(d) if d.is_empty() => return Ok(false),
+        Placement::Remote(_) => return Ok(false),
         Placement::Local(d) => d,
-        Placement::Remote(_) => Default::default(),
         Placement::Unknown(reason) => {
             return if allow_unverified {
                 Ok(true)

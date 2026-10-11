@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "VolumeInfo": {
+      "properties": {
+        "cluster_size": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "data_offset": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "evidence": {
+          "description": "Evidence for the geometry, as tagged objects (`boot_sector`, `fat_signature`, …)."
+        },
+        "fs": {
+          "type": "string"
+        },
+        "id": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "offset": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "score": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "walked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "fs",
+        "cluster_size",
+        "data_offset",
+        "score",
+        "walked",
+        "evidence"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "volumes": {
+      "items": {
+        "$ref": "#/$defs/VolumeInfo"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "volumes"
+  ],
+  "title": "VolumesData",
+  "type": "object"
+}

@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "ErrorBody": {
+      "properties": {
+        "code": {
+          "description": "Stable snake_case identifier, e.g. `target_on_source_device`.",
+          "type": "string"
+        },
+        "details": true,
+        "message": {
+          "description": "English description; never localized.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "details"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "data": {
+      "type": "null"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ErrorBody"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "ok"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}
