@@ -25,6 +25,7 @@ rescyo-core = { path = "crates/rescyo-core" }
 rescyo-i18n = { path = "crates/rescyo-i18n" }
 rescyo-testkit = { path = "crates/rescyo-testkit" }
 rescyo-verify = { path = "crates/rescyo-verify" }
+rescyo-codec = { path = "crates/rescyo-codec" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

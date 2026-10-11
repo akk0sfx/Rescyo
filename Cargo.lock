@@ -695,6 +695,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rescyo-codec"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "rescyo-core"
 version = "0.1.0"
 dependencies = [
@@ -743,6 +750,7 @@ name = "rescyo-fs"
 version = "0.1.0"
 dependencies = [
  "encoding_rs",
+ "rescyo-codec",
  "rescyo-io",
  "serde",
  "serde_json",

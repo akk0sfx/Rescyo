@@ -15,6 +15,7 @@ members = ["."]
 [dependencies]
 libfuzzer-sys = "0.4"
 rescyo-io = { path = "../crates/rescyo-io", features = ["testing"] }
+rescyo-codec = { path = "../crates/rescyo-codec" }
 rescyo-part = { path = "../crates/rescyo-part" }
 rescyo-fat = { path = "../crates/rescyo-fat" }
 rescyo-fs = { path = "../crates/rescyo-fs" }
@@ -74,6 +75,13 @@ bench = false
 [[bin]]
 name = "mapfile"
 path = "fuzz_targets/mapfile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "codecs"
+path = "fuzz_targets/codecs.rs"
 test = false
 doc = false
 bench = false

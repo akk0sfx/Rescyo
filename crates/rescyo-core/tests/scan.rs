@@ -17,18 +17,15 @@ use rescyo_testkit::{FileState, require_corpus};
 use sha2::{Digest, Sha256};
 
 fn read_layout(r: &GuardedReader, extents: &[Extent]) -> Vec<u8> {
+    let layout = rescyo_fs::DataLayout {
+        extents: extents.to_vec(),
+    };
     let mut out = Vec::new();
-    for e in extents {
-        match e {
-            Extent::Disk { offset, len } => {
-                let mut b = vec![0u8; *len as usize];
-                r.read(*offset, &mut b).unwrap();
-                out.extend_from_slice(&b);
-            }
-            Extent::Zero { len } => out.resize(out.len() + *len as usize, 0),
-            Extent::Inline { data } => out.extend_from_slice(data),
-        }
-    }
+    rescyo_fs::content::stream(r, &layout, layout.len(), &mut |d, _| {
+        out.extend_from_slice(d);
+        Ok(())
+    })
+    .unwrap();
     out
 }
 
@@ -64,7 +61,7 @@ fn every_scenario_scans_into_a_session_with_paths_and_content() {
         // Reopen from disk: everything must have been committed.
         let session = Session::open(&dir.path().join("s.db")).unwrap();
         assert_eq!(session.check_source(&fp).unwrap(), FingerprintMatch::Match);
-        let entries = session.entries(|x| x.entry.kind == EntryKind::File).unwrap();
+        let entries = session.entries(|x| x.entry.kind != EntryKind::Directory).unwrap();
         let by_path: HashMap<String, _> = entries
             .iter()
             .map(|x| (session.path_of(x.id).unwrap(), x))
@@ -111,7 +108,7 @@ fn deep_scan_finds_volumes_without_any_boot_sector() {
             ..ScanOptions::default()
         };
         let report = scan(&r, &mut session, &opts, &mut |_| {}, &CancelToken::new()).unwrap();
-        let files = session.entries(|x| x.entry.kind == EntryKind::File).unwrap();
+        let files = session.entries(|x| x.entry.kind != EntryKind::Directory).unwrap();
         let shas: std::collections::HashSet<String> = files
             .iter()
             .map(|x| sha(&read_layout(&r, &x.entry.layout.extents)))
