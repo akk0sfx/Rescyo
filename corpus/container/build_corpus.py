@@ -37,6 +37,66 @@ def payload(seed: str, size: int) -> bytes:
     return bytes(out[:size])
 
 
+# A 16x16 baseline JPEG; real-format files let content verification be tested too.
+SMALL_JPEG = bytes.fromhex(
+    "ffd8ffe000104a46494600010200000100010000ffc00011080010001003002200011101021101ffdb00430006040506050406060506070706080a100a0a09090a140e0f0c1017141818171416161a1d251f1a1b231c1616202c20232627292a29191f2d302d283025282928ffdb0043010707070a080a130a0a13281a161a2828282828282828282828282828282828282828282828282828282828282828282828282828282828282828282828282828ffc4001f0000010501010101010100000000000000000102030405060708090a0bffc400b5100002010303020403050504040000017d01020300041105122131410613516107227114328191a1082342b1c11552d1f02433627282090a161718191a25262728292a3435363738393a434445464748494a535455565758595a636465666768696a737475767778797a838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae1e2e3e4e5e6e7e8e9eaf1f2f3f4f5f6f7f8f9faffc4001f0100030101010101010101010000000000000102030405060708090a0bffc400b51100020102040403040705040400010277000102031104052131061241510761711322328108144291a1b1c109233352f0156272d10a162434e125f11718191a262728292a35363738393a434445464748494a535455565758595a636465666768696a737475767778797a82838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae2e3e4e5e6e7e8e9eaf2f3f4f5f6f7f8f9faffda000c03000001110211003f00aada478192ccbdb3879148212dad06f6ed81e6305ef9ea3a7e14b145e1f8373c7a5ea1244b8c1f2adf71ff0080a93deba68575eb8f9bfb274f4936e14ac33aa8f4242e334f9f4af1b49344f685215db831da5a395ce7a9f3589c9cf638e3f3fab78ac4c67cb29cade728fe89bfccc2588c1e6368a9ca8cbf994e0975b5e293bebd95f65748ffd9"
+)
+
+
+def jpeg_sized(seed: str, size: int) -> bytes:
+    """A valid JPEG of exactly `size` bytes (or the smallest valid one): comment segments after
+    SOI carry deterministic filler."""
+    body = SMALL_JPEG[2:]
+    need = size - len(SMALL_JPEG)
+    if need <= 0:
+        return SMALL_JPEG
+    need = max(need, 4)
+    segs = []
+    filler = payload(seed, need)
+    pos = 0
+    while need > 0:
+        n = min(need, 65537)
+        if 0 < need - n < 4:
+            n -= 4
+        data = filler[pos:pos + n - 4]
+        pos += n - 4
+        segs.append(b"\xff\xfe" + (len(data) + 2).to_bytes(2, "big") + data)
+        need -= n
+    return b"\xff\xd8" + b"".join(segs) + body
+
+
+def ooxml_sized(seed: str, size: int, kind: str) -> bytes:
+    """A valid OOXML package (docx or xlsx) padded with a stored part to `size` bytes."""
+    import io
+    import zipfile
+
+    def build(pad: int) -> bytes:
+        buf = io.BytesIO()
+        fixed = (2020, 9, 13, 12, 0, 0)
+        with zipfile.ZipFile(buf, "w") as z:
+            def put(name, data, method):
+                info = zipfile.ZipInfo(name, fixed)
+                info.compress_type = method
+                z.writestr(info, data)
+            put("[Content_Types].xml", '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>', zipfile.ZIP_DEFLATED)
+            main = "word/document.xml" if kind == "docx" else "xl/workbook.xml"
+            put(main, f"<doc seed=\"{seed}\">" + payload(seed, 256).hex() + "</doc>", zipfile.ZIP_DEFLATED)
+            put("docProps/rescyo-padding.bin", payload(seed + ":pad", pad), zipfile.ZIP_STORED)
+        return buf.getvalue()
+
+    base = build(0)
+    return build(max(size - len(base), 0))
+
+
+def content_for(path: str, seed: str, size: int) -> bytes:
+    lower = path.lower()
+    if lower.endswith((".jpg", ".jpeg")):
+        return jpeg_sized(seed, size)
+    if lower.endswith((".docx", ".xlsx")):
+        return ooxml_sized(seed, size, lower.rsplit(".", 1)[1])
+    return payload(seed, size)
+
+
 def run(*cmd, **kw):
     r = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, **kw)
     if r.returncode != 0:
@@ -209,13 +269,13 @@ def populate(fs, ops, scenario):
             fs.mkdir(path)
             dirs[path] = "live"
         elif op == "write":
-            data = payload(f"{scenario}:{path}", size)
+            data = content_for(path, f"{scenario}:{path}", size)
             mtime += 2
             fs.write(path, data, tmp, mtime)
             if not flags.get("temp"):
                 files[path] = {
                     "path": path,
-                    "size": size,
+                    "size": len(data),
                     "sha256": hashlib.sha256(data).hexdigest(),
                     "state": "live",
                     "in_root": bool(flags.get("in_root")),
