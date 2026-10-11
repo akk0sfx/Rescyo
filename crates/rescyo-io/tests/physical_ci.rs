@@ -38,3 +38,33 @@ fn physical_disk_reads_match_the_backing_image() {
     let disks = list_disks().expect("list disks");
     eprintln!("listed {} disks", disks.len());
 }
+
+#[test]
+fn device_resolution_keeps_source_and_target_apart() {
+    use rescyo_io::device::{Placement, placement_of_path, placement_of_source, target_info};
+    if std::env::var("RESCYO_CI_DISPOSABLE").as_deref() != Ok("1") {
+        eprintln!("skipped: not a disposable CI runner");
+        return;
+    }
+    let device = std::env::var("RESCYO_CI_DEVICE").expect("RESCYO_CI_DEVICE");
+    let disk = PhysicalDisk::open(&device).expect("open device read-only");
+    let Placement::Local(src) = placement_of_source(disk.identity()) else {
+        panic!(
+            "source devices unresolved: {:?}",
+            placement_of_source(disk.identity())
+        );
+    };
+    assert!(!src.is_empty());
+    let tmp = std::env::temp_dir();
+    let target = placement_of_path(&tmp);
+    eprintln!("source {src:?}, target {target:?}");
+    let Placement::Local(dst) = target else {
+        panic!("temp dir unresolved: {target:?}")
+    };
+    assert!(
+        src.is_disjoint(&dst),
+        "attached image and system disk must differ"
+    );
+    let info = target_info(&tmp);
+    assert!(info.free_bytes.is_some_and(|f| f > 0), "{info:?}");
+}

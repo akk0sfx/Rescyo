@@ -66,6 +66,43 @@ pub struct DeepScan {
     pub ex_roots: Vec<u64>,
 }
 
+/// Incremental scanner: feed it the Source in order, chunk by chunk, then [`FatScanner::finish`].
+/// Lets one pass over a disk serve several file-system scanners.
+#[derive(Debug)]
+pub struct FatScanner {
+    out: DeepScan,
+    ex: ExContext,
+}
+
+impl FatScanner {
+    pub fn new(range: Range<u64>) -> Self {
+        // Permissive context: geometry is unknown while scanning.
+        let ex = ExContext {
+            max_cluster: u32::MAX - 1,
+            cluster_size: 1,
+            max_size: u64::MAX,
+        };
+        Self {
+            out: DeepScan {
+                range,
+                ..DeepScan::default()
+            },
+            ex,
+        }
+    }
+
+    /// Inspects `chunk`, which starts at absolute sector-aligned offset `at`.
+    pub fn feed(&mut self, at: u64, chunk: &[u8]) {
+        for (i, s) in chunk.as_chunks::<SECTOR>().0.iter().enumerate() {
+            inspect(s, at + (i * SECTOR) as u64, &self.ex, &mut self.out);
+        }
+    }
+
+    pub fn finish(self) -> DeepScan {
+        self.out
+    }
+}
+
 /// Scans `range` sector by sector. Progress goes to `sink` as [`Phase::DeepScan`].
 pub fn deep_scan(
     r: &GuardedReader,
@@ -75,34 +112,18 @@ pub fn deep_scan(
 ) -> Result<DeepScan, GuardError> {
     let end = range.end.min(r.geometry().size);
     let start = range.start - range.start % SECTOR as u64;
-    let mut out = DeepScan {
-        range: start..end,
-        ..DeepScan::default()
-    };
-    let total = end.saturating_sub(start);
-    // Permissive context: geometry is unknown while scanning.
-    let ex = ExContext {
-        max_cluster: u32::MAX - 1,
-        cluster_size: 1,
-        max_size: u64::MAX,
-    };
+    let mut scanner = FatScanner::new(start..end);
     let mut buf = vec![0u8; usize::try_from(CHUNK).unwrap_or(1 << 20)];
     let mut at = start;
-    while at < end {
-        if cancel.is_cancelled() {
-            break;
-        }
+    while at < end && !cancel.is_cancelled() {
         let n = usize::try_from((end - at).min(CHUNK)).unwrap_or(0);
         let chunk = buf.get_mut(..n).unwrap_or_default();
         r.read(at, chunk)?;
-        for (i, s) in chunk.as_chunks::<SECTOR>().0.iter().enumerate() {
-            let off = at + (i * SECTOR) as u64;
-            inspect(s, off, &ex, &mut out);
-        }
+        scanner.feed(at, chunk);
         at += n as u64;
-        sink.progress(Phase::DeepScan, at - start, Some(total));
+        sink.progress(Phase::DeepScan, at - start, Some(end - start));
     }
-    Ok(out)
+    Ok(scanner.finish())
 }
 
 fn inspect(s: &[u8], off: u64, ex: &ExContext, out: &mut DeepScan) {

@@ -11,5 +11,5 @@ mod scan;
 mod walk;
 
 pub use boot::{Found, NtfsGeometry, parse_boot, probe_boot};
-pub use scan::{MftScan, RecordHit, deep_scan, infer_volumes};
+pub use scan::{MftScan, NtfsScanner, RecordHit, deep_scan, infer_volumes};
 pub use walk::{WalkError, WalkStats, walk};

@@ -29,24 +29,25 @@ pub struct MftScan {
     pub records: Vec<RecordHit>,
 }
 
-pub fn deep_scan(
-    r: &GuardedReader,
-    range: Range<u64>,
-    sink: &mut dyn ScanSink,
-    cancel: &CancelToken,
-) -> Result<MftScan, GuardError> {
-    let end = range.end.min(r.geometry().size);
-    let start = range.start - range.start % SECTOR as u64;
-    let mut out = MftScan {
-        range: start..end,
-        ..MftScan::default()
-    };
-    let mut buf = vec![0u8; usize::try_from(CHUNK).unwrap_or(1 << 20)];
-    let mut at = start;
-    while at < end && !cancel.is_cancelled() {
-        let n = usize::try_from((end - at).min(CHUNK)).unwrap_or(0);
-        let chunk = buf.get_mut(..n).unwrap_or_default();
-        r.read(at, chunk)?;
+/// Incremental scanner: feed it the Source in order, then [`NtfsScanner::finish`].
+#[derive(Debug)]
+pub struct NtfsScanner {
+    out: MftScan,
+}
+
+impl NtfsScanner {
+    pub fn new(range: Range<u64>) -> Self {
+        Self {
+            out: MftScan {
+                range,
+                ..MftScan::default()
+            },
+        }
+    }
+
+    /// Inspects `chunk`, which starts at absolute sector-aligned offset `at`.
+    pub fn feed(&mut self, at: u64, chunk: &[u8]) {
+        let out = &mut self.out;
         for (i, s) in chunk.as_chunks::<SECTOR>().0.iter().enumerate() {
             let off = at + (i * SECTOR) as u64;
             if s.starts_with(b"FILE") && out.records.len() < MAX_HITS {
@@ -68,10 +69,33 @@ pub fn deep_scan(
                 out.boots.push((off, g));
             }
         }
+    }
+
+    pub fn finish(self) -> MftScan {
+        self.out
+    }
+}
+
+pub fn deep_scan(
+    r: &GuardedReader,
+    range: Range<u64>,
+    sink: &mut dyn ScanSink,
+    cancel: &CancelToken,
+) -> Result<MftScan, GuardError> {
+    let end = range.end.min(r.geometry().size);
+    let start = range.start - range.start % SECTOR as u64;
+    let mut scanner = NtfsScanner::new(start..end);
+    let mut buf = vec![0u8; usize::try_from(CHUNK).unwrap_or(1 << 20)];
+    let mut at = start;
+    while at < end && !cancel.is_cancelled() {
+        let n = usize::try_from((end - at).min(CHUNK)).unwrap_or(0);
+        let chunk = buf.get_mut(..n).unwrap_or_default();
+        r.read(at, chunk)?;
+        scanner.feed(at, chunk);
         at += n as u64;
         sink.progress(Phase::DeepScan, at - start, Some(end - start));
     }
-    Ok(out)
+    Ok(scanner.finish())
 }
 
 /// Volume candidates from a scan: each boot sector read as a primary and as a backup (the
