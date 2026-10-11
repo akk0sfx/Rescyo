@@ -83,3 +83,22 @@ error-cancelled = Stopped. The session keeps everything found so far.
 error-preflight = Nothing was written. Fix these problems first:
 
 hint-admin = Reading disks needs administrator rights on Windows or sudo on Linux and macOS.
+
+## Imaging
+image-start = Imaging { $source } to { $image } (map: { $map })…
+phase-image-copy = Copying
+phase-image-trim = Trimming bad areas
+phase-image-scrape = Scraping bad areas
+phase-image-retry = Retrying bad sectors
+image-rescued = rescued
+image-bad-short = bad
+image-done = Image complete: { $rescued } of { $size } rescued.
+image-bad = { $count ->
+        [one] 1 bad area ({ $size }) could not be read.
+       *[other] { $count } bad areas ({ $size }) could not be read.
+    } They are zeros in the image and marked in the map; pass --map when scanning the image.
+error-image-exists = { $path } already exists and has no map. Rescyo never overwrites an image; choose another file name or pass its --map.
+error-map-invalid = Cannot read the map { $path }: { $reason }
+error-map-mismatch = The map describes a disk of { $map }, but the source has { $source }.
+error-image-cancelled = Stopped. The map is saved; run the same command again to continue.
+hint-image-resume = The map is saved. Reconnect the disk and run the same command again to continue.

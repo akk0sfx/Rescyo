@@ -177,6 +177,21 @@ pub struct InfoData {
     pub journal: Vec<JournalRow>,
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct ImageData {
+    pub source: String,
+    pub image: String,
+    /// The ddrescue mapfile describing which parts of the image hold real data.
+    pub map: String,
+    pub size: u64,
+    pub rescued: u64,
+    /// Bytes that could not be read; zeros in the image.
+    pub bad_bytes: u64,
+    pub bad_areas: u64,
+    /// The run continued an earlier, interrupted copy.
+    pub resumed: bool,
+}
+
 /// Every schema, by command name, for the schema test (which can also rewrite them).
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn schemas() -> Vec<(&'static str, serde_json::Value)> {
@@ -193,5 +208,6 @@ pub fn schemas() -> Vec<(&'static str, serde_json::Value)> {
         ("ls", s::<LsData>()),
         ("recover", s::<RecoverData>()),
         ("info", s::<InfoData>()),
+        ("image", s::<ImageData>()),
     ]
 }

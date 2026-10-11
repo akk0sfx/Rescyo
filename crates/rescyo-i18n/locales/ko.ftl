@@ -56,3 +56,19 @@ error-cancelled = 중지했습니다. 지금까지 찾은 내용은 세션에 �
 error-preflight = 아무것도 쓰지 않았습니다. 먼저 다음 문제를 해결하십시오:
 
 hint-admin = 디스크를 읽으려면 Windows에서는 관리자 권한, Linux와 macOS에서는 sudo가 필요합니다.
+
+## Imaging
+image-start = { $source }의 이미지를 { $image }에 만드는 중(맵: { $map })…
+phase-image-copy = 복사
+phase-image-trim = 불량 영역 다듬기
+phase-image-scrape = 불량 영역 섹터별 읽기
+phase-image-retry = 불량 섹터 재시도
+image-rescued = 복구됨
+image-bad-short = 불량
+image-done = 이미지 완료: { $size } 중 { $rescued } 복구.
+image-bad = 불량 영역 { $count }개({ $size })를 읽지 못했습니다. 이미지에서는 0으로 채워지고 맵에 표시됩니다. 이미지를 스캔할 때 --map을 지정하세요.
+error-image-exists = { $path }이(가) 이미 있으며 맵이 없습니다. Rescyo는 이미지를 덮어쓰지 않습니다. 다른 파일 이름을 고르거나 해당 --map을 지정하세요.
+error-map-invalid = 맵 { $path }을(를) 읽을 수 없습니다: { $reason }
+error-map-mismatch = 맵의 디스크 크기는 { $map }이지만 소스는 { $source }입니다.
+error-image-cancelled = 중지했습니다. 맵이 저장되었습니다. 같은 명령을 다시 실행하면 계속합니다.
+hint-image-resume = 맵이 저장되었습니다. 디스크를 다시 연결하고 같은 명령을 다시 실행하면 계속합니다.

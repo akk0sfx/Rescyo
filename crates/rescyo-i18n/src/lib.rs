@@ -185,7 +185,7 @@ mod tests {
     fn every_message_formats_without_errors() {
         let args: Vec<(&str, Arg<'_>)> = [
             "source", "path", "session", "target", "report", "reason", "devices", "fs", "offset", "log",
-            "size", "needed", "free", "limit",
+            "size", "needed", "free", "limit", "map", "image", "rescued",
         ]
         .iter()
         .map(|k| (*k, Arg::from("x")))
