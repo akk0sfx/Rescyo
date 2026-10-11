@@ -70,3 +70,10 @@ path = "fuzz_targets/verify_any.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "mapfile"
+path = "fuzz_targets/mapfile.rs"
+test = false
+doc = false
+bench = false
