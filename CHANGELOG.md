@@ -7,6 +7,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Added
 
 - **File carving**: `scan --deep --carve` finds JPEG, PNG, GIF, PDF, ZIP-based documents (docx, xlsx, pptx, odt, epub…), MP4/MOV/HEIF, WAV/AVI/WEBP and BMP files by their own structure where no file system describes them, follows each to its real end (never a guessed length), and keeps them in a separate `carved` volume, one folder per type; recovery verifies their content like any other file.
+- **ext2/ext3/ext4 (experimental)**: intact volumes with extent trees, block maps, inline data and hashed directories; a backup superblock when the primary is gone; lost ext4 partitions found by their superblocks. Deleted names are read from directory slack where the kernel left them (Linux 5.13 and later wipes them, and zeroes a deleted inode's extents; carving recovers such files).
 
 ## [0.2.0] — 2026-10-12
 
