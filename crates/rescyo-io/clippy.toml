@@ -1,0 +1,14 @@
+# rescyo-io must never be able to write (ADR-0003). This file replaces the workspace clippy.toml
+# for this crate, so it repeats the test allowances.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests = true
+disallowed-methods = [
+  { path = "std::fs::OpenOptions::write", reason = "rescyo-io is read-only (ADR-0003)" },
+  { path = "std::fs::OpenOptions::append", reason = "rescyo-io is read-only (ADR-0003)" },
+  { path = "std::fs::OpenOptions::create", reason = "rescyo-io is read-only (ADR-0003)" },
+  { path = "std::fs::OpenOptions::truncate", reason = "rescyo-io is read-only (ADR-0003)" },
+  { path = "std::fs::File::create", reason = "rescyo-io is read-only (ADR-0003)" },
+  { path = "std::fs::write", reason = "rescyo-io is read-only (ADR-0003)" },
+]

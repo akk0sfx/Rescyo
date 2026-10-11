@@ -1,0 +1,6 @@
+name = "fat12-floppy"
+fs = "fat12"
+table = "none"
+size_mib = 2
+cluster = 512
+corruptions = ["none", "boot", "fat1", "root", "boot+fat1"]

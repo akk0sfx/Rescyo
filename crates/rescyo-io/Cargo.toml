@@ -1,0 +1,30 @@
+[package]
+name = "rescyo-io"
+description = "Read-only block sources: disk images and physical disks. Nothing in this crate can write."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+sha2 = "0.11.0"
+thiserror = "2.0.21"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO", "Win32_System_Ioctl", "Win32_Security"] }
+
+[target."cfg(unix)".dependencies]
+libc = "0.2.190"
+
+[features]
+# Test doubles (MemSource, FaultySource) for other crates' tests. Never enable in release builds.
+testing = []

@@ -1,0 +1,21 @@
+[package]
+name = "rescyo-i18n"
+description = "Localized user-facing strings for Rescyo (Project Fluent)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+fluent-bundle = "0.16.0"
+sys-locale = "0.3.2"
+unic-langid = "0.9.6"
+
+[dev-dependencies]
+fluent-syntax = "0.12.0"

@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "Totals": {
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "damaged": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "files": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "guessed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "intact": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "partial": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resumed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unverified": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "files",
+        "bytes",
+        "intact",
+        "partial",
+        "damaged",
+        "unverified",
+        "guessed",
+        "resumed",
+        "failed"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "report_csv": {
+      "type": "string"
+    },
+    "report_json": {
+      "type": "string"
+    },
+    "source_unverified": {
+      "type": "boolean"
+    },
+    "target": {
+      "type": "string"
+    },
+    "target_unverified": {
+      "type": "boolean"
+    },
+    "totals": {
+      "$ref": "#/$defs/Totals"
+    }
+  },
+  "required": [
+    "target",
+    "report_json",
+    "report_csv",
+    "target_unverified",
+    "source_unverified",
+    "totals"
+  ],
+  "title": "RecoverData",
+  "type": "object"
+}

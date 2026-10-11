@@ -1,0 +1,3 @@
+# Writes are isolated from the Source and fail closed
+
+`BlockSource` has no write method, and the only code paths that write are Recovery and Session storage. Both resolve their destination to the set of underlying physical devices (through partitions, LVM/dm/md, dynamic disks, APFS containers) and refuse if it intersects the Source's devices. When the devices cannot be determined (FUSE, exotic stacks, missing permissions), we refuse by default; `--allow-unverified-target` overrides it and the override is recorded in the journal and Report. Fail-open was rejected because the cost of a false "safe" is the user's last copy of their data.

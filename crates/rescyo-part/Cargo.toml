@@ -1,0 +1,22 @@
+[package]
+name = "rescyo-part"
+description = "Partition table readers (MBR, EBR, GPT) for Rescyo."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+crc32fast = "1.5.2"
+rescyo-io = { workspace = true }
+thiserror = "2.0.21"
+
+[dev-dependencies]
+rescyo-io = { workspace = true, features = ["testing"] }
+rescyo-testkit = { workspace = true }

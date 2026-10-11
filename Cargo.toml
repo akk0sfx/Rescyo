@@ -1,0 +1,52 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "xtask"]
+exclude = ["fuzz"]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/akk0sfx/Rescyo"
+homepage = "https://github.com/akk0sfx/Rescyo"
+authors = ["Rescyo contributors"]
+publish = false
+
+[workspace.dependencies]
+rescyo-io = { path = "crates/rescyo-io" }
+rescyo-part = { path = "crates/rescyo-part" }
+rescyo-fs = { path = "crates/rescyo-fs" }
+rescyo-fat = { path = "crates/rescyo-fat" }
+rescyo-ntfs = { path = "crates/rescyo-ntfs" }
+rescyo-dmde = { path = "crates/rescyo-dmde" }
+rescyo-core = { path = "crates/rescyo-core" }
+rescyo-i18n = { path = "crates/rescyo-i18n" }
+rescyo-testkit = { path = "crates/rescyo-testkit" }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# Values read from a disk are hostile: no silent truncation or panicking indexing in parsers.
+cast_possible_truncation = "warn"
+indexing_slicing = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+dbg_macro = "deny"
+todo = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+[profile.dev.package."*"]
+opt-level = 2

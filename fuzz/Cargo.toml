@@ -1,0 +1,64 @@
+[package]
+name = "rescyo-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Not part of the main workspace: fuzzing needs nightly and libFuzzer.
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rescyo-io = { path = "../crates/rescyo-io", features = ["testing"] }
+rescyo-part = { path = "../crates/rescyo-part" }
+rescyo-fat = { path = "../crates/rescyo-fat" }
+rescyo-fs = { path = "../crates/rescyo-fs" }
+rescyo-ntfs = { path = "../crates/rescyo-ntfs" }
+rescyo-dmde = { path = "../crates/rescyo-dmde" }
+
+[[bin]]
+name = "part_tables"
+path = "fuzz_targets/part_tables.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fat_dir"
+path = "fuzz_targets/fat_dir.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fat_volume"
+path = "fuzz_targets/fat_volume.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ntfs_record"
+path = "fuzz_targets/ntfs_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ntfs_volume"
+path = "fuzz_targets/ntfs_volume.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dmde_log"
+path = "fuzz_targets/dmde_log.rs"
+test = false
+doc = false
+bench = false

@@ -1,0 +1,7 @@
+name = "fat32-gpt"
+fs = "fat32"
+table = "gpt"
+part_start_mib = 1
+size_mib = 72
+cluster = 1024
+corruptions = ["none", "boot", "boot_and_backup", "fat1", "root"]

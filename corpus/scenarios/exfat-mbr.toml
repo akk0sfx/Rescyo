@@ -1,0 +1,7 @@
+name = "exfat-mbr"
+fs = "exfat"
+table = "mbr"
+part_start_mib = 1
+size_mib = 64
+cluster = 4096
+corruptions = ["none", "mbr", "boot", "boot_and_backup", "fat1", "root"]
