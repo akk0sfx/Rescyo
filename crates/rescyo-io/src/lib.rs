@@ -7,6 +7,8 @@
 
 mod badmap;
 pub mod bytes;
+#[allow(unsafe_code)]
+pub mod device;
 mod fingerprint;
 mod guarded;
 mod image;
