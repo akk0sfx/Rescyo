@@ -1,10 +1,12 @@
 //! Rescyo core: Sessions, Scans, Recovery and Reports, shared by every interface.
 #![forbid(unsafe_code)]
 
+pub mod import;
 pub mod recovery;
 pub mod scan;
 pub mod session;
 
+pub use import::{ImportError, ImportOptions, ImportSummary, import_dmde};
 pub use recovery::report::{Integrity, RecoveryReport};
 pub use recovery::{
     DeletedMode, DeviceResolver, Plan, Problem, RecoverOptions, RecoveryError, RecoveryProgress, Selection,

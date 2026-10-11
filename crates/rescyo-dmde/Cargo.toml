@@ -13,3 +13,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+rescyo-fs = { workspace = true }
+thiserror = "2.0.21"
