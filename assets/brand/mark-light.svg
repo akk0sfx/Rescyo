@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="200 200 624 624">
+  <defs>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23242F"/><stop offset="1" stop-color="#0A0A0F"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D9DAE6"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF8A3D"/><stop offset="1" stop-color="#FF3B1F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF5A1F" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FF5A1F" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 15.0)"><path d="M 350.06 331.67 A 18.0 18.0 0 0 1 351.78 304.70 A 262.0 262.0 0 0 1 672.22 304.70 A 18.0 18.0 0 0 1 673.94 331.67 L 608.82 396.79 A 12.0 12.0 0 0 1 593.36 398.07 A 140.0 140.0 0 0 0 430.64 398.07 A 12.0 12.0 0 0 1 415.18 396.79 Z" fill="#16171F" fill-opacity="0.07" stroke="#16171F" stroke-opacity="0.16" stroke-width="3" stroke-dasharray="10 12"/>
+  <path d="M 692.33 350.06 A 18.0 18.0 0 0 1 719.30 351.78 A 262.0 262.0 0 0 1 719.30 672.22 A 18.0 18.0 0 0 1 692.33 673.94 L 627.21 608.82 A 12.0 12.0 0 0 1 625.93 593.36 A 140.0 140.0 0 0 0 625.93 430.64 A 12.0 12.0 0 0 1 627.21 415.18 Z" fill="#16171F"/>
+  <path d="M 673.94 692.33 A 18.0 18.0 0 0 1 672.22 719.30 A 262.0 262.0 0 0 1 351.78 719.30 A 18.0 18.0 0 0 1 350.06 692.33 L 415.18 627.21 A 12.0 12.0 0 0 1 430.64 625.93 A 140.0 140.0 0 0 0 593.36 625.93 A 12.0 12.0 0 0 1 608.82 627.21 Z" fill="#16171F"/>
+  <path d="M 331.67 673.94 A 18.0 18.0 0 0 1 304.70 672.22 A 262.0 262.0 0 0 1 304.70 351.78 A 18.0 18.0 0 0 1 331.67 350.06 L 396.79 415.18 A 12.0 12.0 0 0 1 398.07 430.64 A 140.0 140.0 0 0 0 398.07 593.36 A 12.0 12.0 0 0 1 396.79 608.82 Z" fill="#16171F"/>
+  <path d="M 350.06 301.67 A 18.0 18.0 0 0 1 351.78 274.70 A 262.0 262.0 0 0 1 672.22 274.70 A 18.0 18.0 0 0 1 673.94 301.67 L 608.82 366.79 A 12.0 12.0 0 0 1 593.36 368.07 A 140.0 140.0 0 0 0 430.64 368.07 A 12.0 12.0 0 0 1 415.18 366.79 Z" fill="url(#orange)"/></g>
+</svg>
