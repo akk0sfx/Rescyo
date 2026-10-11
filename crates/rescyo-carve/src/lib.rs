@@ -137,7 +137,11 @@ impl Carver {
             if let Some(e) = c.failed.take() {
                 return Err(CarveError::Read(e));
             }
-            let Some(len) = len else { continue };
+            // A size field may claim more than the Source holds: such a file is truncated.
+            let Some(len) = len.filter(|&l| offset.checked_add(l).is_some_and(|e| e <= r.geometry().size))
+            else {
+                continue;
+            };
             let ext = extension(&mut c, format, len);
             if let Some(e) = c.failed.take() {
                 return Err(CarveError::Read(e));

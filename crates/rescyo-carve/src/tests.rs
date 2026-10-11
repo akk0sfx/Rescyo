@@ -210,3 +210,13 @@ fn emit_groups_by_extension() {
         ]
     );
 }
+
+#[test]
+fn a_size_field_past_the_end_of_the_disk_is_not_a_file() {
+    let mut d = Disk::new(64 << 10);
+    let mut wav = b"RIFF".to_vec();
+    wav.extend_from_slice(&(1u32 << 30).to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+    d.put(4, wav);
+    assert!(d.carve(&HashSet::new()).is_empty());
+}
