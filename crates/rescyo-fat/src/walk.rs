@@ -147,6 +147,8 @@ struct Walker<'a> {
     jobs: Vec<Job>,
     /// First clusters of directories already walked or scheduled.
     visited: HashSet<u32>,
+    /// Every cluster read as part of some directory (first and continuation clusters).
+    dir_clusters: HashSet<u32>,
     /// Entry ids of walked directories by first cluster.
     dir_ids: HashMap<u32, EntryId>,
     /// Names seen for directory clusters that were not walked from their entry.
@@ -189,6 +191,7 @@ impl<'a> Walker<'a> {
             },
             jobs: Vec::new(),
             visited: HashSet::new(),
+            dir_clusters: HashSet::new(),
             dir_ids: HashMap::new(),
             names: HashMap::new(),
             emitted: 0,
@@ -261,10 +264,13 @@ impl<'a> Walker<'a> {
                 if last > u64::from(self.geo.max_cluster) {
                     return Ok(Vec::new());
                 }
-                match self.geo.cluster_offset(first) {
-                    Some(off) => self.read(off, n * self.csize()),
-                    None => Ok(Vec::new()),
+                let Some(off) = self.geo.cluster_offset(first) else {
+                    return Ok(Vec::new());
+                };
+                for k in 0..n {
+                    self.dir_clusters.insert(first + u32::try_from(k).unwrap_or(0));
                 }
+                self.read(off, n * self.csize())
             }
             DirSource::Chain { first, known_len, .. } => {
                 let Some(mut data) = self.read_cluster(first)? else {
@@ -324,6 +330,7 @@ impl<'a> Walker<'a> {
                     seen.insert(v);
                     cur = v;
                 }
+                self.dir_clusters.extend(seen);
                 Ok(data)
             }
         }
@@ -668,7 +675,7 @@ impl<'a> Walker<'a> {
                 rejected += 1;
                 continue;
             };
-            if self.visited.contains(&c) || parent_of.contains_key(&c) {
+            if self.visited.contains(&c) || self.dir_clusters.contains(&c) || parent_of.contains_key(&c) {
                 continue;
             }
             let Some(d) = self.read_cluster(c)? else {
@@ -704,7 +711,7 @@ impl<'a> Walker<'a> {
         let candidates: Vec<u32> = parent_of.keys().copied().collect();
         for c in candidates {
             self.check()?;
-            if self.visited.contains(&c) {
+            if self.visited.contains(&c) || self.dir_clusters.contains(&c) {
                 continue;
             }
             // Climb to the highest unreached ancestor, so a whole lost subtree hangs once.
