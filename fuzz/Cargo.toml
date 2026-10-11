@@ -18,6 +18,7 @@ rescyo-io = { path = "../crates/rescyo-io", features = ["testing"] }
 rescyo-part = { path = "../crates/rescyo-part" }
 rescyo-fat = { path = "../crates/rescyo-fat" }
 rescyo-fs = { path = "../crates/rescyo-fs" }
+rescyo-ntfs = { path = "../crates/rescyo-ntfs" }
 
 [[bin]]
 name = "part_tables"
@@ -36,6 +37,20 @@ bench = false
 [[bin]]
 name = "fat_volume"
 path = "fuzz_targets/fat_volume.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ntfs_record"
+path = "fuzz_targets/ntfs_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "ntfs_volume"
+path = "fuzz_targets/ntfs_volume.rs"
 test = false
 doc = false
 bench = false

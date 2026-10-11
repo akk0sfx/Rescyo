@@ -223,6 +223,7 @@ dependencies = [
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",
+ "rescyo-ntfs",
  "rescyo-part",
 ]
 
@@ -234,6 +235,17 @@ dependencies = [
  "sha2",
  "thiserror",
  "windows-sys",
+]
+
+[[package]]
+name = "rescyo-ntfs"
+version = "0.1.0-dev"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

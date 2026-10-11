@@ -244,6 +244,16 @@ dependencies = [
 [[package]]
 name = "rescyo-ntfs"
 version = "0.1.0-dev"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "rescyo-part",
+ "rescyo-testkit",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+]
 
 [[package]]
 name = "rescyo-part"
