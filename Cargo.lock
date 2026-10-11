@@ -45,6 +45,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc32fast"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01a7799fd6b852db0e61728dde9a204c423b44d689dbd432522543614b490e78"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -196,6 +205,12 @@ version = "0.1.0-dev"
 [[package]]
 name = "rescyo-part"
 version = "0.1.0-dev"
+dependencies = [
+ "crc32fast",
+ "rescyo-io",
+ "rescyo-testkit",
+ "thiserror",
+]
 
 [[package]]
 name = "rescyo-testkit"
