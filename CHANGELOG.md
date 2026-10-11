@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-12
+
+Second alpha: image a dying disk before touching it, find partitions the table lost, and read the NTFS files Windows compresses.
+
 ### Added
 
 - **Virtual-disk containers as sources**: VHD (fixed, dynamic, differencing), VHDX (dynamic, fixed, differencing; an unreplayed log is replayed in memory only), VMDK (sparse, stream-optimized, flat and split descriptors, delta disks), qcow2 v2/v3 (compressed clusters, backing files) and EnCase/SMART E01/S01 evidence sets (all segments, Adler-32 and table mirrors) open directly, detected by signature or chosen with `--format`. Damage inside a container (a table entry outside its file, a chunk that fails its checksum or does not decompress) makes only that range unreadable; header copies, redundant grain directories and table mirrors are used when the primary is damaged. `rescyo image` converts any of them to a raw image. Checked against files written by qemu-img and ewfacquire (`cargo xtask containers`).
@@ -18,6 +22,13 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Changed
 
 - Sessions use schema 2 (compressed extents, named streams); Rescyo 0.1 refuses to open them rather than misreading compressed data. Schema 1 sessions still open.
+
+### Known limitations
+
+- Still no signed binaries: build from source or take CI artifacts until code signing is in place.
+- EFS-encrypted files, WOF files backed by an external WIM, ext4/HFS+/APFS/Btrfs, disk-image formats other than raw, carving and the GUI arrive in later versions (see the roadmap).
+- Partition tables are found and reported, never rewritten; table repair is planned for the expert mode in v0.4.
+- Translations other than English and Russian await native review.
 
 ## [0.1.0] — 2026-10-11
 
@@ -42,4 +53,5 @@ First alpha: a command-line tool that recovers whole folder trees from FAT12/16/
 - NTFS compressed and encrypted files, alternate data streams, ext4/HFS+/APFS/Btrfs, imaging, carving and the GUI arrive in later versions (see the roadmap).
 - Translations other than English and Russian await native review.
 
+[0.2.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.1.0

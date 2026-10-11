@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.2-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#支持平台)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -27,7 +27,7 @@ Rescyo 可从损坏、已格式化或部分无法读取的硬盘、存储卡和 
 DMDE、R-Studio 和 UFS Explorer 的免费开源替代品。
 
 > [!IMPORTANT]
-> **Alpha 版（v0.1）。** 命令行可恢复 FAT、exFAT 和 NTFS，并通过了逐字节恢复测试，但尚无签名的二进制文件。请始终恢复到另一块磁盘；磁盘出现故障时请先制作镜像。
+> **Alpha 版（v0.2）。** 命令行可恢复 FAT、exFAT 和 NTFS（包括压缩文件和备用数据流），能为故障磁盘制作带 ddrescue 兼容映射文件的镜像，并能找回丢失的分区；已通过逐字节恢复测试，但尚无签名的二进制文件。请始终恢复到另一块磁盘；磁盘出现故障时请先制作镜像。
 
 ## 为什么选择 Rescyo
 
@@ -72,11 +72,13 @@ cd Rescyo
 cargo build --release
 ```
 
-计划中的 v0.1 命令行：
+命令行示例：
 
 ```sh
 rescyo disks --json                              # 列出磁盘
 rescyo scan /dev/sdb --session flash.db          # 查找卷和文件夹（只读）
+rescyo image /dev/sdb --to /mnt/backup/flash.img  # 故障磁盘：先制作镜像（可续传）
+rescyo partitions /dev/sdb                       # 查找分区表中缺失的分区
 rescyo ls flash.db --deleted --ext jpg,docx      # 浏览找到的内容
 rescyo recover flash.db --to /mnt/backup/flash   # 复制出来，并生成 SHA-256 报告
 ```
@@ -98,7 +100,7 @@ flowchart LR
 |---|---|---|
 | FAT12、FAT16、FAT32 | 完整：丢失的卷、文件夹树、已删除文件 | v0.1 |
 | exFAT | 完整 | v0.1 |
-| NTFS | 完整：MFT、已删除文件；压缩、稀疏文件和 ADS 于 v0.2 | v0.1 |
+| NTFS | 完整：MFT、已删除文件、稀疏文件；自 v0.2 起支持压缩（LZNT1）和 WOF 压缩（XPRESS、LZX）文件及备用数据流 | v0.1 |
 | ext4、HFS+、APFS、Btrfs | 实验性 | v0.3–v0.4 |
 
 ## 支持平台
