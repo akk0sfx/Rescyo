@@ -135,6 +135,10 @@ enum Command {
         /// Also read the whole source for lost volumes and folders.
         #[arg(long)]
         deep: bool,
+        /// With --deep, also carve files by their signatures (JPEG, PNG, GIF, PDF, ZIP/Office,
+        /// MP4/MOV, WAV/AVI, BMP) into a separate `carved` volume.
+        #[arg(long, requires = "deep")]
+        carve: bool,
         /// Code page of short names (cp437, cp866, cp932, cp936, cp949, cp950, cp850).
         #[arg(long)]
         codepage: Option<String>,
@@ -286,6 +290,7 @@ fn main() -> ExitCode {
             source,
             session,
             deep,
+            carve,
             codepage,
             allow_unverified_target,
             src,
@@ -293,7 +298,7 @@ fn main() -> ExitCode {
             &mut out,
             source,
             session,
-            *deep,
+            (*deep, *carve),
             codepage.as_deref(),
             *allow_unverified_target,
             src,
@@ -644,7 +649,9 @@ fn print_scan(out: &Out, d: &dto::ScanData) {
     }
     let walked = d.volumes.iter().filter(|v| v.walked).count();
     for v in &d.volumes {
-        if v.walked {
+        if v.fs == "carved" {
+            out.say(&out.t("scan-carved", &[("id", v.id.into()), ("files", v.files.into())]));
+        } else if v.walked {
             out.say(&out.t(
                 "scan-volume",
                 &[
@@ -674,7 +681,7 @@ fn scan(
     out: &mut Out,
     source: &str,
     session: &Path,
-    deep: bool,
+    (deep, carve): (bool, bool),
     cp: Option<&str>,
     allow_unverified: bool,
     src: &SourceArgs,
@@ -688,6 +695,7 @@ fn scan(
         mode: if deep { ScanMode::Deep } else { ScanMode::Quick },
         codepage: cp,
         locale_codepage: locale_codepage(out.lang()),
+        carve,
         ..ScanOptions::default()
     };
     let report =

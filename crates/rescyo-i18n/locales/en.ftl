@@ -117,3 +117,7 @@ partition-boot-primary = boot sector
 partition-boot-backup = backup boot sector only
 partition-boot-none = no boot sector
 partition-unpartitioned = No partition table: the whole disk is one volume, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = Volume { $id }: { $files ->
+        [one] 1 file
+       *[other] { $files } files
+    } carved by their signatures (in folders by type; their content is checked on recovery)

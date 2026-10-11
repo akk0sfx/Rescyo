@@ -13,6 +13,8 @@ pub enum FsKind {
     Fat32,
     Exfat,
     Ntfs,
+    /// Not a file system: files carved by their own structure, gathered as one pseudo-volume.
+    Carved,
 }
 
 impl FsKind {
@@ -23,6 +25,7 @@ impl FsKind {
             Self::Fat32 => "fat32",
             Self::Exfat => "exfat",
             Self::Ntfs => "ntfs",
+            Self::Carved => "carved",
         }
     }
 
