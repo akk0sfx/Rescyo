@@ -1,0 +1,7 @@
+name = "fat32-mbr"
+fs = "fat32"
+table = "mbr"
+part_start_mib = 1
+size_mib = 64
+cluster = 512
+corruptions = ["none", "mbr", "boot", "boot_and_backup", "fat1", "fat1+fat2", "root", "boot+fat1", "mbr+boot_and_backup"]

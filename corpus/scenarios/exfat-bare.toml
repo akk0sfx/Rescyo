@@ -1,0 +1,6 @@
+name = "exfat-bare"
+fs = "exfat"
+table = "none"
+size_mib = 32
+cluster = 32768
+corruptions = ["none", "boot", "fat1"]

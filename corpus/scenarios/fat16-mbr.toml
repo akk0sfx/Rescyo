@@ -1,0 +1,7 @@
+name = "fat16-mbr"
+fs = "fat16"
+table = "mbr"
+part_start_mib = 1
+size_mib = 32
+cluster = 2048
+corruptions = ["none", "mbr", "boot", "fat1", "root", "boot+fat1", "mbr+boot"]
