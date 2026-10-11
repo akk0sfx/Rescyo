@@ -230,6 +230,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rescyo-ext4"
+version = "0.2.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "rescyo-fat"
 version = "0.2.0"
 dependencies = [
@@ -260,6 +271,7 @@ dependencies = [
  "rescyo-carve",
  "rescyo-codec",
  "rescyo-dmde",
+ "rescyo-ext4",
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",

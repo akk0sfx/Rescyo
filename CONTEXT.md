@@ -75,7 +75,7 @@ A second, named content of a file (an NTFS alternate data stream), listed and re
 _Avoid_: fork, ADS (in user-facing text)
 
 **Assembly method**:
-How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.
+How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `ext4_extents`, `block_map`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.
 _Avoid_: reliability, confidence, source
 
 **Carving**:

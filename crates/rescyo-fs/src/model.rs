@@ -13,6 +13,8 @@ pub enum FsKind {
     Fat32,
     Exfat,
     Ntfs,
+    /// ext2, ext3 or ext4 (experimental, ADR-0005).
+    Ext4,
     /// Not a file system: files carved by their own structure, gathered as one pseudo-volume.
     Carved,
 }
@@ -25,6 +27,7 @@ impl FsKind {
             Self::Fat32 => "fat32",
             Self::Exfat => "exfat",
             Self::Ntfs => "ntfs",
+            Self::Ext4 => "ext4",
             Self::Carved => "carved",
         }
     }
@@ -150,6 +153,10 @@ pub enum AssemblyMethod {
     FatChainMirror,
     ExfatBitmapContiguous,
     MftRunlist,
+    /// ext4 extent tree (or one left in a deleted inode).
+    Ext4Extents,
+    /// ext2/ext3 block map (direct and indirect blocks).
+    BlockMap,
     ContiguousAssumed,
     Carved,
 }
@@ -161,6 +168,8 @@ impl AssemblyMethod {
             Self::FatChainMirror => "fat_chain_mirror",
             Self::ExfatBitmapContiguous => "exfat_bitmap_contiguous",
             Self::MftRunlist => "mft_runlist",
+            Self::Ext4Extents => "ext4_extents",
+            Self::BlockMap => "block_map",
             Self::ContiguousAssumed => "contiguous_assumed",
             Self::Carved => "carved",
         }

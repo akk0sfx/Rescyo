@@ -5,7 +5,7 @@ FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       dosfstools mtools exfatprogs exfat-fuse ntfs-3g fdisk fuse3 python3 locales \
-      wimtools attr \
+      wimtools attr e2fsprogs \
  && sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen \
  && rm -rf /var/lib/apt/lists/*
 
