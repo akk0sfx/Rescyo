@@ -18,6 +18,6 @@ mod walk;
 pub use boot::{Found, exfat_checksum_ok, parse_exfat_boot, parse_fat_boot, probe_boot};
 pub use geometry::{FatCopy, FatGeometry, RootDir};
 pub use infer::{geometry_from_grid, infer_volumes, seeds_for};
-pub use scan::{DeepScan, DirStart, FatHead, deep_scan};
+pub use scan::{DeepScan, DirStart, FatHead, FatScanner, deep_scan};
 pub use table::{FatTable, Link, is_fat_head};
 pub use walk::{WalkError, WalkOptions, WalkStats, walk};
