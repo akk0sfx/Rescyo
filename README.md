@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--alpha-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#platforms)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 [![unsafe](https://img.shields.io/badge/unsafe-forbidden%20in%20parsers-14965F)](CONTRIBUTING.md#safety-rules)
@@ -25,8 +25,8 @@ Rescyo brings back files from damaged, formatted or partially unreadable disks, 
 
 Free open-source alternative to DMDE, R-Studio and UFS Explorer.
 
-> [!WARNING]
-> **Pre-alpha.** Nothing is released yet. Do not trust important data to Rescyo until v0.1.0 passes its byte-for-byte recovery gate.
+> [!IMPORTANT]
+> **Alpha (v0.1).** The command line recovers FAT, exFAT and NTFS and passes its byte-for-byte test gate, but there are no signed binaries yet. Always recover to a different disk, and image a failing disk before anything else.
 
 ## Why Rescyo
 
@@ -77,7 +77,7 @@ Parsers contain no `unsafe`, bound every loop, recursion and allocation, and are
 
 ## Quick start
 
-Rescyo is not released yet. To build from source:
+No signed binaries yet: build from source (Rust 1.99), or take the unsigned artifacts of the latest [Build run](https://github.com/akk0sfx/Rescyo/actions/workflows/build.yml).
 
 ```sh
 git clone https://github.com/akk0sfx/Rescyo.git
@@ -85,11 +85,12 @@ cd Rescyo
 cargo build --release
 ```
 
-The v0.1 command line, as planned:
+Then, on a disk or an image (reading disks needs administrator or root rights):
 
 ```sh
 rescyo disks --json                              # list disks
 rescyo scan /dev/sdb --session flash.db          # find volumes and folders (read-only)
+rescyo scan /dev/sdb --session flash.db --deep   # also look for lost volumes and folders
 rescyo ls flash.db --deleted --ext jpg,docx      # browse what was found
 rescyo recover flash.db --to /mnt/backup/flash   # copy out, with a SHA-256 report
 rescyo import-dmde devscan.log --source /dev/sdb --session flash.db
