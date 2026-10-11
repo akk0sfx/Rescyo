@@ -72,3 +72,18 @@ error-map-invalid = 맵 { $path }을(를) 읽을 수 없습니다: { $reason }
 error-map-mismatch = 맵의 디스크 크기는 { $map }이지만 소스는 { $source }입니다.
 error-image-cancelled = 중지했습니다. 맵이 저장되었습니다. 같은 명령을 다시 실행하면 계속합니다.
 hint-image-resume = 맵이 저장되었습니다. 디스크를 다시 연결하고 같은 명령을 다시 실행하면 계속합니다.
+
+## Partition search
+partitions-start = { $source }에서 부트 섹터를 찾는 중…
+partitions-table = 파티션 테이블: { $table }
+partitions-none = 볼륨을 찾지 못했습니다.
+partition-listed = #{ $number } ({ $offset }): { $fs }{ $label }, { $size }, 테이블에 있음 ({ $boot })
+partition-lost = 손실된 파티션 ({ $offset }, 바이트 { $bytes }): { $fs }{ $label }, { $size }, 테이블에 없음 ({ $boot })
+partition-conflicting = 볼륨 ({ $offset }, 바이트 { $bytes }): { $fs }{ $label }, { $size }, 테이블 항목과 겹침 ({ $boot })
+partition-nested = 다른 볼륨 안의 볼륨 ({ $offset }): { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = #{ $number } ({ $offset }, { $size }): 시작 위치에서 볼륨을 찾지 못함
+partition-boot-both = 부트 섹터와 백업
+partition-boot-primary = 부트 섹터
+partition-boot-backup = 백업 부트 섹터만
+partition-boot-none = 부트 섹터 없음
+partition-unpartitioned = 파티션 테이블 없음: 디스크 전체가 하나의 볼륨, { $fs }{ $label }, { $size } ({ $boot })

@@ -185,14 +185,14 @@ mod tests {
     fn every_message_formats_without_errors() {
         let args: Vec<(&str, Arg<'_>)> = [
             "source", "path", "session", "target", "report", "reason", "devices", "fs", "offset", "log",
-            "size", "needed", "free", "limit", "map", "image", "rescued",
+            "size", "needed", "free", "limit", "map", "image", "rescued", "boot", "table", "label",
         ]
         .iter()
         .map(|k| (*k, Arg::from("x")))
         .chain(
             [
                 "count", "files", "dirs", "deleted", "lost", "id", "cluster", "score", "index", "folders",
-                "seeds", "offgrid",
+                "seeds", "offgrid", "bytes", "number",
             ]
             .iter()
             .map(|k| (*k, Arg::from(3u64))),

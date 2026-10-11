@@ -7,6 +7,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Added
 
 - **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
+- **Lost partition search**: `rescyo partitions` reads a disk or image once for FAT, exFAT and NTFS boot sectors (primary and backup), confirms each against the volume's FAT, root directory or MFT, and lists what it finds as listed, lost, conflicting, nested or unpartitioned, plus table entries with no volume. Nothing is written; deep scans use the same search and report lost partitions.
 - `scan`, `import-dmde` and `recover` take `--map` so the unread areas of an image count as unreadable sectors; `recover` no longer re-reads sectors its session already found unreadable.
 
 ## [0.1.0] — 2026-10-11

@@ -234,3 +234,31 @@ fn image_copies_with_a_ddrescue_map_and_scan_honours_it() {
     assert_eq!(o.status.code(), Some(3));
     assert_eq!(json(&o)["error"]["code"], "map_size_mismatch");
 }
+
+#[test]
+fn partitions_finds_a_partition_whose_table_was_wiped() {
+    let Some(img) = image("fat32-mbr") else {
+        eprintln!("skipped: corpus not generated");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let copy = dir.path().join("wiped.img");
+    let mut data = std::fs::read(img).unwrap();
+    data[..512].fill(0);
+    std::fs::write(&copy, &data).unwrap();
+    let o = rescyo(&["partitions", copy.to_str().unwrap(), "--json"]);
+    assert_eq!(o.status.code(), Some(0), "{}", String::from_utf8_lossy(&o.stderr));
+    let v = json(&o);
+    assert_eq!(v["data"]["partition_table"], "none");
+    let parts = v["data"]["partitions"].as_array().unwrap();
+    assert_eq!(parts.len(), 1, "{parts:?}");
+    assert_eq!(parts[0]["offset"], 1 << 20);
+    assert_eq!(parts[0]["fs"], "fat32");
+    assert_eq!(parts[0]["status"], "lost");
+    assert_eq!(parts[0]["backup_boot"], true);
+
+    // People see it named as lost, in their language.
+    let o = rescyo(&["partitions", copy.to_str().unwrap(), "--lang", "ru"]);
+    let text = String::from_utf8_lossy(&o.stdout);
+    assert!(text.contains("Потерянный раздел"), "{text}");
+}

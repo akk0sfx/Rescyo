@@ -50,6 +50,10 @@ _Avoid_: log file
 A hypothesis that a file system of a given type and geometry (cluster size, offset of cluster #2) exists on a Source.
 _Avoid_: partition (a partition is a table entry; a Volume candidate may have none)
 
+**Lost partition**:
+A volume found by its boot sectors (and confirmed by its tables) that the partition table does not list and that overlaps nothing the table lists. Rescyo reports it; rewriting the table is a separate, expert decision.
+_Avoid_: deleted partition, missing drive
+
 **Volume**:
 The Volume candidate chosen for analysis in a Session.
 
