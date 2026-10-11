@@ -1,0 +1,16 @@
+/target
+**/*.rs.bk
+.DS_Store
+
+# Internal planning and private reference material (contains a real device path)
+/docs/PLAN.md
+/docs/reference/
+
+# Generated test corpus (rebuild with `cargo xtask corpus`)
+/corpus/out/
+
+# cargo-fuzz
+/fuzz/target
+/fuzz/corpus
+/fuzz/artifacts
+/fuzz/coverage

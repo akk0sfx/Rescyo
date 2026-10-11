@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.zst binary
+*.img binary
+*.bin binary
+*.ftl text eol=lf
