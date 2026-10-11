@@ -44,6 +44,9 @@ pub struct ScanOptions {
     /// Candidates below this score are recorded but not walked.
     pub min_score: u64,
     pub limits: Limits,
+    /// During a deep scan, also carve files by their signatures (into a separate `carved`
+    /// pseudo-volume, skipping files the file systems already describe).
+    pub carve: bool,
     pub hints: Hints,
 }
 
@@ -55,6 +58,7 @@ impl Default for ScanOptions {
             locale_codepage: None,
             min_score: 250,
             limits: Limits::default(),
+            carve: false,
             hints: Hints::default(),
         }
     }
@@ -258,15 +262,21 @@ pub fn scan(
     // One sequential pass serves every deep scanner.
     let (mut fat_scan, mut ntfs_scan) = (None, None);
     let mut partitions = Vec::new();
+    let mut carver = None;
     if opts.mode == ScanMode::Deep {
         let mut fs = FatScanner::new(0..size);
         let mut ns = NtfsScanner::new(0..size);
         let mut boots = BootScanner::new();
+        let mut carving = opts.carve.then(rescyo_carve::Carver::new);
         read_through(r, 0..size, cancel, progress, |at, chunk| {
             fs.feed(at, chunk);
             ns.feed(at, chunk);
             boots.feed(at, chunk);
+            if let Some(c) = carving.as_mut() {
+                c.feed(at, chunk);
+            }
         })?;
+        carver = carving;
         // Volumes found by their boot sectors (lost partitions included) are probed like
         // table entries, so they carry boot-sector evidence.
         partitions = boots.finish(r, &table)?;
@@ -387,6 +397,9 @@ pub fn scan(
         }
         report.volumes.push(summary);
     }
+    if let Some(c) = carver {
+        report.volumes.extend(carve(r, session, c, cancel)?);
+    }
     let bad = r.bad_map();
     report.unreadable_sectors = bad.bad_sectors();
     session.save_bad_map(&bad)?;
@@ -395,6 +408,61 @@ pub fn scan(
         &serde_json::to_value(&report).unwrap_or_default(),
     )?;
     Ok(report)
+}
+
+/// Carves files outside what the walked volumes describe into a `carved` pseudo-volume.
+fn carve(
+    r: &GuardedReader,
+    session: &mut Session,
+    carver: rescyo_carve::Carver,
+    cancel: &CancelToken,
+) -> Result<Option<VolumeSummary>, ScanError> {
+    let known: std::collections::HashSet<u64> = session
+        .entries(|e| e.entry.kind == rescyo_fs::EntryKind::File)?
+        .iter()
+        .filter_map(|e| match e.entry.layout.extents.first() {
+            Some(rescyo_fs::Extent::Disk { offset, .. }) => Some(*offset),
+            _ => None,
+        })
+        .collect();
+    let files = carver.finish(r, &known, cancel).map_err(|e| match e {
+        rescyo_carve::CarveError::Read(g) => ScanError::from(g),
+        rescyo_carve::CarveError::Cancelled => ScanError::Cancelled,
+        other => ScanError::Engine(other.to_string()),
+    })?;
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let candidate = VolumeCandidate {
+        fs: FsKind::Carved,
+        offset: None,
+        cluster_size: 512,
+        data_offset: 0,
+        size: None,
+        label: None,
+        evidence: Vec::new(),
+        score: 0,
+        params: serde_json::Value::Null,
+    };
+    let id = session.add_volume(&candidate)?;
+    let mut sink = session.sink(id)?;
+    let stats = rescyo_carve::emit(&files, &mut sink).map_err(|e| ScanError::Engine(e.to_string()))?;
+    sink.finish()?;
+    session.mark_walked(id)?;
+    session.journal("carved", &serde_json::to_value(&stats).unwrap_or_default())?;
+    Ok(Some(VolumeSummary {
+        id,
+        fs: FsKind::Carved,
+        offset: None,
+        cluster_size: 512,
+        data_offset: 0,
+        score: 0,
+        walked: true,
+        files: files.len() as u64,
+        dirs: stats.len() as u64,
+        deleted: files.len() as u64,
+        lost_folders: 0,
+    }))
 }
 
 #[allow(

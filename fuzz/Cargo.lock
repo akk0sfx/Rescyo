@@ -209,6 +209,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "rescyo-carve"
+version = "0.2.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "thiserror",
+]
+
+[[package]]
 name = "rescyo-codec"
 version = "0.2.0"
 
@@ -248,6 +257,7 @@ name = "rescyo-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
+ "rescyo-carve",
  "rescyo-codec",
  "rescyo-dmde",
  "rescyo-fat",

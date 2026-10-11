@@ -262,3 +262,112 @@ fn partitions_finds_a_partition_whose_table_was_wiped() {
     let text = String::from_utf8_lossy(&o.stdout);
     assert!(text.contains("Потерянный раздел"), "{text}");
 }
+
+#[test]
+fn carving_brings_back_photos_from_a_disk_without_any_file_system() {
+    let Some(img) = image("fat16-mbr") else {
+        eprintln!("skipped: corpus not generated");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    // The photos and documents, recovered normally from the intact image.
+    let first = dir.path().join("first.db");
+    let o = rescyo(&[
+        "scan",
+        img.to_str().unwrap(),
+        "--session",
+        first.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(o.status.code(), Some(0));
+    let orig = dir.path().join("orig");
+    let o = rescyo(&[
+        "recover",
+        first.to_str().unwrap(),
+        "--to",
+        orig.to_str().unwrap(),
+        "--ext",
+        "jpg,docx,xlsx",
+        "--json",
+    ]);
+    let report = json(&o);
+    assert_eq!(report["ok"], true, "{report}");
+    let mut originals = Vec::new();
+    for entry in walkdir(&orig) {
+        let name = entry.file_name().unwrap().to_string_lossy().to_string();
+        if name.ends_with(".jpg") || name.ends_with(".docx") || name.ends_with(".xlsx") {
+            originals.push(std::fs::read(&entry).unwrap());
+        }
+    }
+    assert!(originals.len() >= 4);
+    // A blank disk holding only those files, each at a sector start.
+    let mut disk = vec![0u8; 8 << 20];
+    let mut at = 4096;
+    for f in &originals {
+        disk[at..at + f.len()].copy_from_slice(f);
+        at = (at + f.len()).div_ceil(4096) * 4096 + 4096;
+    }
+    let blank = dir.path().join("blank.img");
+    std::fs::write(&blank, &disk).unwrap();
+    let session = dir.path().join("s.db");
+    let o = rescyo(&[
+        "scan",
+        blank.to_str().unwrap(),
+        "--session",
+        session.to_str().unwrap(),
+        "--deep",
+        "--carve",
+        "--json",
+    ]);
+    assert_eq!(o.status.code(), Some(0), "{}", String::from_utf8_lossy(&o.stderr));
+    let v = json(&o);
+    let vols = v["data"]["volumes"].as_array().unwrap();
+    assert_eq!(vols.len(), 1, "{v}");
+    assert_eq!(vols[0]["fs"], "carved");
+    assert_eq!(vols[0]["files"], originals.len() as u64);
+
+    let out = dir.path().join("out");
+    let o = rescyo(&[
+        "recover",
+        session.to_str().unwrap(),
+        "--to",
+        out.to_str().unwrap(),
+        "--deleted",
+        "--json",
+    ]);
+    let v = json(&o);
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["data"]["totals"]["intact"], originals.len() as u64, "{v}");
+    let digest = |b: &[u8]| -> String {
+        use sha2::Digest;
+        sha2::Sha256::digest(b)
+            .iter()
+            .map(|x| format!("{x:02x}"))
+            .collect()
+    };
+    let mut got: Vec<String> = walkdir(&out)
+        .into_iter()
+        .filter(|p| !p.to_string_lossy().contains("_rescyo_report"))
+        .map(|p| digest(&std::fs::read(p).unwrap()))
+        .collect();
+    let mut want: Vec<String> = originals.iter().map(|b| digest(b)).collect();
+    got.sort();
+    want.sort();
+    assert_eq!(got, want);
+}
+
+fn walkdir(root: &Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
