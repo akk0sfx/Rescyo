@@ -6,6 +6,7 @@
 //! handles alignment, unreadable sectors, the [`BadSectorMap`] and the degradation alarm.
 
 mod badmap;
+pub mod bytes;
 mod fingerprint;
 mod guarded;
 mod image;
