@@ -4,7 +4,10 @@
 //! not match the session, degraded, gone); 4 preflight failed (nothing written); 5 partial
 //! success (some files partial, damaged or failed); 130 interrupted (the session is kept).
 #![forbid(unsafe_code)]
-#![allow(clippy::result_large_err, reason = "a Failure is built once, on the way out of the process")]
+#![allow(
+    clippy::result_large_err,
+    reason = "a Failure is built once, on the way out of the process"
+)]
 
 mod dto;
 mod out;
