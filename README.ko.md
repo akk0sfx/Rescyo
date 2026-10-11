@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Rescyo 로고: 윗부분 조각이 제자리로 돌아오는 구명 튜브">
+<img src="assets/brand/logo.svg" width="132" alt="Rescyo 로고: 오른쪽 위 조각이 제자리로 돌아오는 구명 튜브">
 
 # Rescyo 레스키오
 

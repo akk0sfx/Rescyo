@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Rescyo 标志：顶部一段正在归位的救生圈">
+<img src="assets/brand/logo.svg" width="132" alt="Rescyo 标志：右上方一段正在归位的救生圈">
 
 # Rescyo 数据救援
 
