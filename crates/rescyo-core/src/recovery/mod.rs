@@ -98,6 +98,8 @@ pub struct RecoverOptions {
     pub selection: Selection,
     /// Accept a Target whose devices cannot be determined (recorded in the Report).
     pub allow_unverified_target: bool,
+    /// Check each recovered file's content against its format (JPEG, PNG, ZIP, PDF, …).
+    pub verify: bool,
 }
 
 /// Something that stops a Recovery before any byte is written.
@@ -149,6 +151,7 @@ pub struct Plan {
     pub problems: Vec<Problem>,
     pub target_unverified: bool,
     pub target_info: TargetInfo,
+    pub verify: bool,
 }
 
 /// Checks that `path` (a Target or a Session file) is on devices disjoint from the Source.
@@ -341,6 +344,7 @@ pub fn plan(
         problems,
         target_unverified,
         target_info: info,
+        verify: opts.verify,
     })
 }
 
@@ -422,6 +426,7 @@ pub fn run(
             state: item.entry.entry.state,
             assembly: item.entry.entry.assembly,
             integrity: Integrity::Unverified,
+            integrity_detail: None,
             sha256: None,
             unreadable: Vec::new(),
             renamed: item.renamed,
@@ -456,10 +461,20 @@ pub fn run(
         }) {
             Ok((sha, unreadable)) => {
                 record.sha256 = Some(sha);
-                record.integrity = if unreadable.is_empty() {
-                    Integrity::Unverified
-                } else {
+                record.integrity = if !unreadable.is_empty() {
                     Integrity::Partial
+                } else if plan.verify {
+                    // Check what was actually written, the way an application would read it.
+                    match rescyo_verify::verify_file(&path, &item.entry.entry.name) {
+                        rescyo_verify::Verdict::Intact => Integrity::Intact,
+                        rescyo_verify::Verdict::Damaged(why) => {
+                            record.integrity_detail = Some(why);
+                            Integrity::Damaged
+                        }
+                        rescyo_verify::Verdict::Unverified => Integrity::Unverified,
+                    }
+                } else {
+                    Integrity::Unverified
                 };
                 record.unreadable = unreadable;
             }

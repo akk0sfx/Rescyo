@@ -188,6 +188,9 @@ enum Command {
         /// Allow a target on a disk Rescyo cannot identify (marked in the report).
         #[arg(long)]
         allow_unverified_target: bool,
+        /// Skip the content check of recovered files.
+        #[arg(long)]
+        no_verify: bool,
         #[command(flatten)]
         select: SelectArgs,
         #[command(flatten)]
@@ -287,19 +290,26 @@ fn main() -> ExitCode {
             source,
             force_rebind,
             allow_unverified_target,
+            no_verify,
             select,
             src,
-        } => recover(
-            &mut out,
-            session,
-            to,
-            source.as_deref(),
-            *force_rebind,
-            *allow_unverified_target,
-            select,
-            src,
-            &cancel,
-        ),
+        } => {
+            let flags = RecoverFlags {
+                force_rebind: *force_rebind,
+                allow_unverified: *allow_unverified_target,
+                verify: !*no_verify,
+            };
+            recover(
+                &mut out,
+                session,
+                to,
+                source.as_deref(),
+                flags,
+                select,
+                src,
+                &cancel,
+            )
+        }
         Command::Info { session } => info(&mut out, session),
     };
     match result {
@@ -677,18 +687,29 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
     Ok(0)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct RecoverFlags {
+    force_rebind: bool,
+    allow_unverified: bool,
+    verify: bool,
+}
+
 #[allow(clippy::too_many_arguments, reason = "one argument per command-line option")]
 fn recover(
     out: &mut Out,
     session: &Path,
     to: &Path,
     source: Option<&str>,
-    force_rebind: bool,
-    allow_unverified: bool,
+    flags: RecoverFlags,
     select: &SelectArgs,
     src_args: &SourceArgs,
     cancel: &CancelToken,
 ) -> Result<u8, Failure> {
+    let RecoverFlags {
+        force_rebind,
+        allow_unverified,
+        verify,
+    } = flags;
     let s = open_session(session)?;
     let rec = s.source().map_err(|e| Failure::session(session, e))?;
     let path = source.map_or_else(|| rec.identity.path.clone(), str::to_owned);
@@ -717,6 +738,7 @@ fn recover(
         target: to.to_path_buf(),
         selection: select.selection(),
         allow_unverified_target: allow_unverified,
+        verify,
     };
     let plan = rescyo_core::plan(&s, &SystemResolver, &opts).map_err(Failure::from_recovery)?;
     if !plan.problems.is_empty() {

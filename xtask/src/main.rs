@@ -171,7 +171,12 @@ fn gate1() -> Result<()> {
                 .filter(|f| f["assembly"] == "contiguous_assumed")
                 .filter_map(|f| f["source_path"].as_str().and_then(|p| p.rsplit('/').next()))
                 .collect();
+            let integrity: std::collections::HashMap<&str, &str> = files
+                .iter()
+                .filter_map(|f| Some((f.get("sha256")?.as_str()?, f.get("integrity")?.as_str()?)))
+                .collect();
             let root_lost = corruption.split('+').any(|c| c == "root");
+            let mut verified = 0u32;
             let (mut live, mut exact, mut excused) = (0u32, 0u32, 0u32);
             let mut missing = Vec::new();
             for f in &s.expected.files {
@@ -186,6 +191,14 @@ fn gate1() -> Result<()> {
                 live += 1;
                 if shas.contains(f.sha256.as_str()) {
                     exact += 1;
+                    // A byte-exact copy of a verifiable format must also pass its content check.
+                    let checkable = [".jpg", ".docx", ".xlsx"].iter().any(|x| f.path.ends_with(x));
+                    match integrity.get(f.sha256.as_str()) {
+                        Some(&"intact") => verified += 1,
+                        Some(&"damaged") => missing.push(format!("{} (exact but reported damaged)", f.path)),
+                        _ if checkable => missing.push(format!("{} (not verified)", f.path)),
+                        _ => {}
+                    }
                 } else if (root_lost && f.in_root) || (f.fragmented != Some(false) && guessed.contains(name))
                 {
                     excused += 1;
@@ -196,7 +209,7 @@ fn gate1() -> Result<()> {
             let ok = missing.is_empty();
             failures += u32::from(!ok);
             rows.push(format!(
-                "| {} | {} | {exact}/{live} | {excused} | {} |",
+                "| {} | {} | {exact}/{live} | {verified} | {excused} | {} |",
                 s.expected.scenario,
                 corruption,
                 if ok {
@@ -216,7 +229,7 @@ fn gate1() -> Result<()> {
     };
     let deleted_ok = pct >= 95.0;
     let mut md = String::from(
-        "## Gate 1\n\n| Scenario | Damage | Live exact | Excused | Result |\n|---|---|---|---|---|\n",
+        "## Gate 1\n\n| Scenario | Damage | Live exact | Verified intact | Excused | Result |\n|---|---|---|---|---|---|\n",
     );
     md.push_str(&rows.join("\n"));
     md.push_str(&format!(

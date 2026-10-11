@@ -23,6 +23,8 @@ ls-total = 共 { $count } 项
 
 recover-plan = { $files } 个文件，{ $size }，目标：{ $target }
 recover-done = 已恢复 { $files } 个文件（{ $size }）。报告：{ $report }
+recover-intact = { $count } 个文件已按其格式校验，完好无损。
+recover-damaged = { $count } 个文件无法按其格式正确读取，请查看报告。
 recover-partial = { $count } 个文件含有用零填充的无法读取部分，请查看报告。
 recover-guessed = { $count } 个文件在没有分配信息的情况下按连续方式读取。使用前请先检查。
 recover-resumed = { $count } 个文件已在上次运行中写入目标并通过校验。

@@ -41,6 +41,11 @@ recover-done = Recovered { $files ->
         [one] { $files } file
        *[other] { $files } files
     } ({ $size }). Report: { $report }
+recover-intact = { $count } files checked against their format and intact.
+recover-damaged = { $count ->
+        [one] { $count } file does not read correctly as its format; see the report.
+       *[other] { $count } files do not read correctly as their format; see the report.
+    }
 recover-partial = { $count ->
         [one] { $count } file has unreadable parts filled with zeros; see the report.
        *[other] { $count } files have unreadable parts filled with zeros; see the report.

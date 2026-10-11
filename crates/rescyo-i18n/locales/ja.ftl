@@ -23,6 +23,8 @@ ls-total = { $count } 件
 
 recover-plan = ファイル { $files } 個、{ $size }、保存先：{ $target }
 recover-done = ファイル { $files } 個（{ $size }）を復旧しました。レポート：{ $report }
+recover-intact = { $count } 個のファイルを形式どおりに検証し、破損はありませんでした。
+recover-damaged = { $count } 個のファイルが形式どおりに読み取れません。レポートを確認してください。
 recover-partial = { $count } 個のファイルに、ゼロで埋めた読み取り不能部分があります。レポートを確認してください。
 recover-guessed = { $count } 個のファイルは割り当て情報がないため連続しているものとして読み取りました。使用前に確認してください。
 recover-resumed = { $count } 個のファイルは前回の実行で保存先にあり、検証済みです。
