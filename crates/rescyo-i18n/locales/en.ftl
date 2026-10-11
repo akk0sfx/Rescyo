@@ -41,6 +41,11 @@ recover-done = Recovered { $files ->
         [one] { $files } file
        *[other] { $files } files
     } ({ $size }). Report: { $report }
+recover-intact = { $count } files checked against their format and intact.
+recover-damaged = { $count ->
+        [one] { $count } file does not read correctly as its format; see the report.
+       *[other] { $count } files do not read correctly as their format; see the report.
+    }
 recover-partial = { $count ->
         [one] { $count } file has unreadable parts filled with zeros; see the report.
        *[other] { $count } files have unreadable parts filled with zeros; see the report.
@@ -78,3 +83,37 @@ error-cancelled = Stopped. The session keeps everything found so far.
 error-preflight = Nothing was written. Fix these problems first:
 
 hint-admin = Reading disks needs administrator rights on Windows or sudo on Linux and macOS.
+
+## Imaging
+image-start = Imaging { $source } to { $image } (map: { $map })…
+phase-image-copy = Copying
+phase-image-trim = Trimming bad areas
+phase-image-scrape = Scraping bad areas
+phase-image-retry = Retrying bad sectors
+image-rescued = rescued
+image-bad-short = bad
+image-done = Image complete: { $rescued } of { $size } rescued.
+image-bad = { $count ->
+        [one] 1 bad area ({ $size }) could not be read.
+       *[other] { $count } bad areas ({ $size }) could not be read.
+    } They are zeros in the image and marked in the map; pass --map when scanning the image.
+error-image-exists = { $path } already exists and has no map. Rescyo never overwrites an image; choose another file name or pass its --map.
+error-map-invalid = Cannot read the map { $path }: { $reason }
+error-map-mismatch = The map describes a disk of { $map }, but the source has { $source }.
+error-image-cancelled = Stopped. The map is saved; run the same command again to continue.
+hint-image-resume = The map is saved. Reconnect the disk and run the same command again to continue.
+
+## Partition search
+partitions-start = Searching { $source } for boot sectors…
+partitions-table = Partition table: { $table }
+partitions-none = No volumes were found.
+partition-listed = #{ $number } at { $offset }: { $fs }{ $label }, { $size }, in the table ({ $boot })
+partition-lost = Lost partition at { $offset } (byte { $bytes }): { $fs }{ $label }, { $size }, not in the table ({ $boot })
+partition-conflicting = Volume at { $offset } (byte { $bytes }): { $fs }{ $label }, { $size }, overlaps a table entry ({ $boot })
+partition-nested = Volume inside another at { $offset }: { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = #{ $number } at { $offset }, { $size }: no volume found at its start
+partition-boot-both = boot sector and backup
+partition-boot-primary = boot sector
+partition-boot-backup = backup boot sector only
+partition-boot-none = no boot sector
+partition-unpartitioned = No partition table: the whole disk is one volume, { $fs }{ $label }, { $size } ({ $boot })

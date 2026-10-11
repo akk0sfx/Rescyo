@@ -2,6 +2,33 @@
 
 All notable changes are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/). The `--json` output has its own schema version (currently 1).
 
+## [Unreleased]
+
+## [0.2.0] — 2026-10-12
+
+Second alpha: image a dying disk before touching it, find partitions the table lost, and read the NTFS files Windows compresses.
+
+### Added
+
+- **Imaging**: `rescyo image` copies a failing disk to an image file in ddrescue-style passes (copy with skipping, trim, scrape, optional retries), keeps a GNU ddrescue-compatible map, saves it atomically and resumes an interrupted copy; existing images are never overwritten.
+- **NTFS compression**: files compressed by NTFS (LZNT1) are rebuilt one compression unit at a time, including deleted ones; damage inside a unit marks only that unit unreadable.
+- **WOF compression** (`compact /exe:xpress4k|xpress8k|xpress16k|lzx`, used by Windows 10/11 for system files): XPRESS Huffman and LZX decoders written from the public specifications, checked against wimlib.
+- **Named streams** (NTFS alternate data streams): `ls --streams` and `recover --streams` show and recover them as `file:stream` (`file_stream` on Windows and macOS targets).
+- Encrypted (EFS) files are reported as unreadable without the user's key instead of being copied as ciphertext.
+- **Lost partition search**: `rescyo partitions` reads a disk or image once for FAT, exFAT and NTFS boot sectors (primary and backup), confirms each against the volume's FAT, root directory or MFT, and lists what it finds as listed, lost, conflicting, nested or unpartitioned, plus table entries with no volume. Nothing is written; deep scans use the same search and report lost partitions.
+- `scan`, `import-dmde` and `recover` take `--map` so the unread areas of an image count as unreadable sectors; `recover` no longer re-reads sectors its session already found unreadable.
+
+### Changed
+
+- Sessions use schema 2 (compressed extents, named streams); Rescyo 0.1 refuses to open them rather than misreading compressed data. Schema 1 sessions still open.
+
+### Known limitations
+
+- Still no signed binaries: build from source or take CI artifacts until code signing is in place.
+- EFS-encrypted files, WOF files backed by an external WIM, ext4/HFS+/APFS/Btrfs, disk-image formats other than raw, carving and the GUI arrive in later versions (see the roadmap).
+- Partition tables are found and reported, never rewritten; table repair is planned for the expert mode in v0.4.
+- Translations other than English and Russian await native review.
+
 ## [0.1.0] — 2026-10-11
 
 First alpha: a command-line tool that recovers whole folder trees from FAT12/16/32, exFAT and NTFS, including damaged volumes, without ever writing to the source.
@@ -25,4 +52,5 @@ First alpha: a command-line tool that recovers whole folder trees from FAT12/16/
 - NTFS compressed and encrypted files, alternate data streams, ext4/HFS+/APFS/Btrfs, imaging, carving and the GUI arrive in later versions (see the roadmap).
 - Translations other than English and Russian await native review.
 
+[0.2.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.1.0

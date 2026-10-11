@@ -23,6 +23,8 @@ ls-total = 항목 { $count }개
 
 recover-plan = 파일 { $files }개, { $size }, 대상: { $target }
 recover-done = 파일 { $files }개({ $size })를 복구했습니다. 보고서: { $report }
+recover-intact = 파일 { $count }개를 형식에 맞게 검증했으며 손상이 없습니다.
+recover-damaged = 파일 { $count }개가 형식에 맞게 읽히지 않습니다. 보고서를 확인하십시오.
 recover-partial = 파일 { $count }개에 0으로 채운 읽을 수 없는 부분이 있습니다. 보고서를 확인하십시오.
 recover-guessed = 파일 { $count }개는 할당 정보 없이 연속된 것으로 가정해 읽었습니다. 사용하기 전에 확인하십시오.
 recover-resumed = 파일 { $count }개는 이전 실행에서 이미 대상에 있었고 검증되었습니다.
@@ -54,3 +56,34 @@ error-cancelled = 중지했습니다. 지금까지 찾은 내용은 세션에 �
 error-preflight = 아무것도 쓰지 않았습니다. 먼저 다음 문제를 해결하십시오:
 
 hint-admin = 디스크를 읽으려면 Windows에서는 관리자 권한, Linux와 macOS에서는 sudo가 필요합니다.
+
+## Imaging
+image-start = { $source }의 이미지를 { $image }에 만드는 중(맵: { $map })…
+phase-image-copy = 복사
+phase-image-trim = 불량 영역 다듬기
+phase-image-scrape = 불량 영역 섹터별 읽기
+phase-image-retry = 불량 섹터 재시도
+image-rescued = 복구됨
+image-bad-short = 불량
+image-done = 이미지 완료: { $size } 중 { $rescued } 복구.
+image-bad = 불량 영역 { $count }개({ $size })를 읽지 못했습니다. 이미지에서는 0으로 채워지고 맵에 표시됩니다. 이미지를 스캔할 때 --map을 지정하세요.
+error-image-exists = { $path }이(가) 이미 있으며 맵이 없습니다. Rescyo는 이미지를 덮어쓰지 않습니다. 다른 파일 이름을 고르거나 해당 --map을 지정하세요.
+error-map-invalid = 맵 { $path }을(를) 읽을 수 없습니다: { $reason }
+error-map-mismatch = 맵의 디스크 크기는 { $map }이지만 소스는 { $source }입니다.
+error-image-cancelled = 중지했습니다. 맵이 저장되었습니다. 같은 명령을 다시 실행하면 계속합니다.
+hint-image-resume = 맵이 저장되었습니다. 디스크를 다시 연결하고 같은 명령을 다시 실행하면 계속합니다.
+
+## Partition search
+partitions-start = { $source }에서 부트 섹터를 찾는 중…
+partitions-table = 파티션 테이블: { $table }
+partitions-none = 볼륨을 찾지 못했습니다.
+partition-listed = #{ $number } ({ $offset }): { $fs }{ $label }, { $size }, 테이블에 있음 ({ $boot })
+partition-lost = 손실된 파티션 ({ $offset }, 바이트 { $bytes }): { $fs }{ $label }, { $size }, 테이블에 없음 ({ $boot })
+partition-conflicting = 볼륨 ({ $offset }, 바이트 { $bytes }): { $fs }{ $label }, { $size }, 테이블 항목과 겹침 ({ $boot })
+partition-nested = 다른 볼륨 안의 볼륨 ({ $offset }): { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = #{ $number } ({ $offset }, { $size }): 시작 위치에서 볼륨을 찾지 못함
+partition-boot-both = 부트 섹터와 백업
+partition-boot-primary = 부트 섹터
+partition-boot-backup = 백업 부트 섹터만
+partition-boot-none = 부트 섹터 없음
+partition-unpartitioned = 파티션 테이블 없음: 디스크 전체가 하나의 볼륨, { $fs }{ $label }, { $size } ({ $boot })

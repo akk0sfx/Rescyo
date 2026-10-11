@@ -1,0 +1,9 @@
+name = "ntfs-features"
+fs = "ntfs"
+table = "mbr"
+part_start_mib = 1
+size_mib = 64
+cluster = 4096
+# Compressed files (LZNT1), alternate data streams and WOF files (XPRESS 4K/8K/16K, LZX).
+features = ["compression", "streams", "wof"]
+corruptions = ["none", "boot", "mft_head"]

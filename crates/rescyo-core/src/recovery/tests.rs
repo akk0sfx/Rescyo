@@ -45,6 +45,7 @@ fn opts(target: &Path) -> RecoverOptions {
         target: target.to_path_buf(),
         selection: Selection::default(),
         allow_unverified_target: false,
+        verify: true,
     }
 }
 

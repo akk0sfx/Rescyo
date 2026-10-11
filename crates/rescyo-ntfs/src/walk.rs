@@ -7,13 +7,15 @@
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 use rescyo_fs::{
-    AssemblyMethod, CancelToken, DataLayout, Entry, EntryId, EntryKind, EntryState, Extent, Limits, Note,
-    Parent, Phase, ScanSink, SeedOrigin, SinkError, Times,
+    AssemblyMethod, CancelToken, Codec, DataLayout, Entry, EntryId, EntryKind, EntryState, Extent, Limits,
+    Note, Parent, Phase, ScanSink, SeedOrigin, SinkError, Times,
 };
 use rescyo_io::{GuardError, GuardedReader};
 
 use crate::boot::NtfsGeometry;
-use crate::record::{self, ATTR_DATA, ATTR_FILE_NAME, ATTR_STANDARD_INFORMATION, AttrBody};
+use crate::record::{
+    self, ATTR_DATA, ATTR_FILE_NAME, ATTR_REPARSE_POINT, ATTR_STANDARD_INFORMATION, AttrBody,
+};
 use crate::scan::MftScan;
 
 const ROOT: u64 = 5;
@@ -22,6 +24,40 @@ const FIRST_USER_RECORD: u64 = 16;
 /// Consecutive non-records after which a contiguous MFT is assumed to end.
 const MFT_END_GAP: u64 = 4096;
 const CHUNK: u64 = 1 << 20;
+/// The named stream holding a WOF-compressed file's content.
+const WOF_STREAM: &str = "WofCompressedData";
+/// Named streams kept per file (more is hostile).
+const MAX_STREAMS: usize = 256;
+
+/// One data attribute as gathered from a record and its extensions.
+#[derive(Debug, Clone, Default)]
+struct RawStream {
+    resident: Option<Vec<u8>>,
+    segments: Vec<(u64, Vec<record::Run>)>,
+    data_size: u64,
+    init_size: u64,
+    /// Compression method flags and log2 clusters per unit.
+    compression: (u16, u8),
+    encrypted: bool,
+    broken: bool,
+}
+
+#[derive(Debug, Default)]
+struct Streams {
+    main: RawStream,
+    named: BTreeMap<String, RawStream>,
+    reparse: Option<Vec<u8>>,
+}
+
+fn wof_codec(algorithm: u32) -> Option<Codec> {
+    Some(match algorithm {
+        0 => Codec::WofXpress4k,
+        1 => Codec::WofLzx,
+        2 => Codec::WofXpress8k,
+        3 => Codec::WofXpress16k,
+        _ => return None,
+    })
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WalkStats {
@@ -325,17 +361,9 @@ impl Emitter<'_> {
         if state == EntryState::Deleted {
             self.stats.deleted += 1;
         }
-        let (kind, size, layout) = if info.is_dir {
-            self.stats.dirs += 1;
-            (EntryKind::Directory, 0, DataLayout::default())
-        } else {
-            self.stats.files += 1;
-            let (size, layout) = self.data_layout(n)?;
-            (EntryKind::File, size, layout)
-        };
-        let entry = Entry {
+        let entry = |kind, name: String, size, layout| Entry {
             parent,
-            name: info.name.clone(),
+            name,
             name_raw: None,
             kind,
             state,
@@ -344,99 +372,244 @@ impl Emitter<'_> {
             layout,
             assembly: AssemblyMethod::MftRunlist,
             fs_ref: n,
-            seed: info.is_dir.then_some(SeedOrigin::Walk),
+            seed: (kind == EntryKind::Directory).then_some(SeedOrigin::Walk),
         };
-        Ok(Some(self.sink.entry(entry)?))
+        if info.is_dir {
+            self.stats.dirs += 1;
+            let e = entry(EntryKind::Directory, info.name.clone(), 0, DataLayout::default());
+            return Ok(Some(self.sink.entry(e)?));
+        }
+        self.stats.files += 1;
+        let mut streams = self.streams(n)?;
+        let main = std::mem::take(&mut streams.main);
+        let (mut size, mut layout) = self.layout_of(n, &main);
+        match streams.reparse.as_deref().and_then(record::wof_algorithm) {
+            Some(Ok(alg)) => match (wof_codec(alg), streams.named.remove(WOF_STREAM)) {
+                (Some(codec), Some(w)) => {
+                    let (_, stored) = self.layout_of(n, &w);
+                    size = main.data_size;
+                    layout = DataLayout {
+                        extents: vec![Extent::Encoded {
+                            codec,
+                            stored: stored.extents,
+                            len: size,
+                        }],
+                    };
+                }
+                _ => self.sink.note(Note::LimitReached {
+                    what: format!("record {n}: WOF compression {alg} without readable data"),
+                }),
+            },
+            Some(Err(provider)) => self.sink.note(Note::LimitReached {
+                what: format!("record {n}: content kept outside the volume (WOF provider {provider})"),
+            }),
+            None => {}
+        }
+        let id = self
+            .sink
+            .entry(entry(EntryKind::File, info.name.clone(), size, layout))?;
+        for (name, raw) in std::mem::take(&mut streams.named) {
+            if self.emitted >= self.limits.max_entries {
+                break;
+            }
+            self.emitted += 1;
+            let (size, layout) = self.layout_of(n, &raw);
+            let name = format!("{}:{name}", info.name);
+            self.sink.entry(entry(EntryKind::Stream, name, size, layout))?;
+        }
+        Ok(Some(id))
     }
 
-    /// The unnamed $DATA stream of record `n` and its extension records.
-    fn data_layout(&mut self, n: u64) -> Result<(u64, DataLayout), WalkError> {
+    /// The data streams and reparse point of record `n`, from it and its extension records.
+    fn streams(&mut self, n: u64) -> Result<Streams, WalkError> {
         let rs = u64::from(self.geo.record_size);
         let mut records = vec![n];
         records.extend(self.extensions.get(&n).cloned().unwrap_or_default());
-        let mut resident: Option<Vec<u8>> = None;
-        let mut segments: Vec<(u64, Vec<record::Run>)> = Vec::new();
-        let (mut data_size, mut init_size) = (0u64, 0u64);
         let max_clusters = self.geo.size / u64::from(self.geo.cluster_size) + 1;
         let max_runs = usize::try_from(self.limits.max_extents).unwrap_or(usize::MAX);
+        let mut out = Streams::default();
         for rn in records {
-            let off = self.locator_offset(rn, rs);
-            let Some(off) = off else { continue };
+            let Some(off) = self.locator_offset(rn, rs) else {
+                continue;
+            };
             let Some(rec) = read_at(self.r, off, rs)? else {
                 continue;
             };
             let Some(h) = record::header(&rec) else { continue };
             for a in record::attributes(&rec, &h) {
-                if a.kind != ATTR_DATA || !a.name.is_empty() {
+                if a.kind == ATTR_REPARSE_POINT {
+                    if let AttrBody::Resident(v) = a.body {
+                        out.reparse = Some(v.to_vec());
+                    }
                     continue;
                 }
-                // Compressed or encrypted streams need decoding that arrives in v0.2.
-                if a.flags & 0x00FF != 0 || a.flags & 0x4000 != 0 {
-                    self.sink.note(Note::LimitReached {
-                        what: format!("record {n}: compressed or encrypted data"),
-                    });
-                    return Ok((data_size, DataLayout::default()));
+                if a.kind != ATTR_DATA {
+                    continue;
                 }
+                let st = if a.name.is_empty() {
+                    &mut out.main
+                } else {
+                    if !out.named.contains_key(&a.name) && out.named.len() >= MAX_STREAMS {
+                        continue;
+                    }
+                    out.named.entry(a.name.clone()).or_default()
+                };
+                st.encrypted |= a.flags & record::FLAG_ENCRYPTED != 0;
                 match a.body {
-                    AttrBody::Resident(v) => resident = Some(v.to_vec()),
+                    AttrBody::Resident(v) => st.resident = Some(v.to_vec()),
                     AttrBody::NonResident {
                         start_vcn,
                         runs,
-                        data_size: ds,
-                        init_size: is,
+                        data_size,
+                        init_size,
+                        compression_unit,
                         ..
                     } => {
                         if start_vcn == 0 {
-                            data_size = ds;
-                            init_size = is.min(ds);
+                            st.data_size = data_size;
+                            st.init_size = init_size.min(data_size);
+                            st.compression = (a.flags & record::FLAG_COMPRESSION_MASK, compression_unit);
                         }
                         if let Some(r) = record::decode_runs(runs, max_runs, max_clusters) {
-                            segments.push((start_vcn, r));
+                            st.segments.push((start_vcn, r));
                         } else {
-                            self.sink.note(Note::ChainCut { cluster: n });
+                            st.broken = true;
                         }
                     }
                 }
             }
         }
-        if let Some(v) = resident {
-            let size = v.len() as u64;
-            return Ok((
-                size,
-                DataLayout {
-                    extents: vec![Extent::Inline { data: v }],
-                },
-            ));
+        Ok(out)
+    }
+
+    /// The size and layout of one stream.
+    fn layout_of(&mut self, n: u64, st: &RawStream) -> (u64, DataLayout) {
+        if st.broken {
+            self.sink.note(Note::ChainCut { cluster: n });
         }
+        if st.encrypted {
+            self.sink.note(Note::LimitReached {
+                what: format!("record {n}: encrypted (EFS) data cannot be read without the user's key"),
+            });
+            return (st.data_size, DataLayout::default());
+        }
+        if let Some(v) = &st.resident {
+            return (
+                v.len() as u64,
+                DataLayout {
+                    extents: vec![Extent::Inline { data: v.clone() }],
+                },
+            );
+        }
+        let mut segments = st.segments.clone();
         segments.sort_by_key(|s| s.0);
+        let runs: Vec<record::Run> = segments.into_iter().flat_map(|s| s.1).collect();
+        match st.compression {
+            (0, _) => {}
+            (record::FLAG_COMPRESSED, unit @ 1..=8) => {
+                return (st.data_size, self.units(n, &runs, unit, st.data_size));
+            }
+            (method, _) => {
+                self.sink.note(Note::LimitReached {
+                    what: format!("record {n}: unknown compression method {method}"),
+                });
+                return (st.data_size, DataLayout::default());
+            }
+        }
         let c = u64::from(self.geo.cluster_size);
         let vol_end = self.geo.volume_offset + self.geo.size;
         let mut layout = DataLayout::default();
-        let mut left = init_size;
-        'outer: for (_, runs) in segments {
-            for run in runs {
-                if left == 0 {
-                    break 'outer;
-                }
-                let len = (run.clusters * c).min(left);
-                match run.lcn.and_then(|l| self.geo.lcn_offset(l)) {
-                    Some(off) if off + len <= vol_end => layout.push_disk(off, len),
-                    Some(_) => {
-                        self.sink.note(Note::ChainCut { cluster: n });
-                        break 'outer;
-                    }
-                    None => layout.extents.push(Extent::Zero { len }),
-                }
-                left -= len;
+        let mut left = st.init_size;
+        for run in runs {
+            if left == 0 {
+                break;
             }
+            let len = (run.clusters * c).min(left);
+            match run.lcn.and_then(|l| self.geo.lcn_offset(l)) {
+                Some(off) if off + len <= vol_end => layout.push_disk(off, len),
+                Some(_) => {
+                    self.sink.note(Note::ChainCut { cluster: n });
+                    break;
+                }
+                None => layout.extents.push(Extent::Zero { len }),
+            }
+            left -= len;
         }
         // Bytes past the initialized size read as zeros.
-        if layout.len() == init_size && data_size > init_size {
+        if layout.len() == st.init_size && st.data_size > st.init_size {
             layout.extents.push(Extent::Zero {
-                len: data_size - init_size,
+                len: st.data_size - st.init_size,
             });
         }
-        Ok((data_size, layout))
+        (st.data_size, layout)
+    }
+
+    /// A compressed stream, one compression unit at a time: fully allocated units are stored
+    /// as they are, empty ones are zeros, and partly allocated ones hold LZNT1 data.
+    fn units(&mut self, n: u64, runs: &[record::Run], unit: u8, size: u64) -> DataLayout {
+        let c = u64::from(self.geo.cluster_size);
+        let per_unit = 1u64 << unit;
+        let unit_bytes = per_unit * c;
+        let vol_end = self.geo.volume_offset + self.geo.size;
+        let mut layout = DataLayout::default();
+        let (mut ri, mut used) = (0usize, 0u64);
+        let mut pos = 0u64;
+        while pos < size {
+            if layout.extents.len() as u64 >= u64::from(self.limits.max_extents) {
+                self.sink.note(Note::LimitReached {
+                    what: format!("record {n}: compression units"),
+                });
+                break;
+            }
+            // The clusters of this unit: (absolute offset or sparse, clusters).
+            let mut pieces: Vec<(Option<u64>, u64)> = Vec::new();
+            let mut need = per_unit;
+            while need > 0 {
+                let Some(run) = runs.get(ri) else {
+                    pieces.push((None, need));
+                    break;
+                };
+                let take = (run.clusters - used).min(need);
+                let off = run.lcn.and_then(|l| self.geo.lcn_offset(l + used));
+                if run.lcn.is_some() && off.is_none_or(|o| o + take * c > vol_end) {
+                    self.sink.note(Note::ChainCut { cluster: n });
+                    return layout;
+                }
+                pieces.push((off, take));
+                need -= take;
+                used += take;
+                if used == run.clusters {
+                    ri += 1;
+                    used = 0;
+                }
+            }
+            let len = unit_bytes.min(size - pos);
+            let allocated: u64 = pieces.iter().filter(|p| p.0.is_some()).map(|p| p.1).sum();
+            if allocated == 0 {
+                layout.extents.push(Extent::Zero { len });
+            } else if allocated == per_unit {
+                let mut left = len;
+                for (off, k) in pieces {
+                    let l = (k * c).min(left);
+                    layout.push_disk(off.unwrap_or(0), l);
+                    left -= l;
+                }
+            } else {
+                let mut stored = DataLayout::default();
+                for (off, k) in pieces {
+                    if let Some(o) = off {
+                        stored.push_disk(o, k * c);
+                    }
+                }
+                layout.extents.push(Extent::Encoded {
+                    codec: Codec::Lznt1,
+                    stored: stored.extents,
+                    len,
+                });
+            }
+            pos += len;
+        }
+        layout
     }
 
     fn locator_offset(&self, n: u64, rs: u64) -> Option<u64> {

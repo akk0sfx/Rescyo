@@ -3,7 +3,10 @@
 use std::io::{IsTerminal, Write};
 use std::path::Path;
 
-use rescyo_core::{Problem, Progress, RecoveryError, RecoveryProgress, ScanError, SessionError};
+use rescyo_core::{
+    ImagePhase, ImageProgress, ImagingError, Problem, Progress, RecoveryError, RecoveryProgress, ScanError,
+    SessionError,
+};
 use rescyo_fs::Phase;
 use rescyo_i18n::{Arg, Localizer, size};
 use rescyo_io::GuardError;
@@ -215,6 +218,68 @@ impl Failure {
         f
     }
 
+    pub fn map_invalid(path: &Path, reason: &str) -> Self {
+        let p = path.display().to_string();
+        Self::new(
+            "map_invalid",
+            format!("cannot read the map {p}: {reason}"),
+            "error-map-invalid",
+            vec![("path", p), ("reason", reason.into())],
+            1,
+        )
+    }
+
+    pub fn map_mismatch(map: u64, source: u64) -> Self {
+        let mut f = Self::new(
+            "map_size_mismatch",
+            format!("the map describes {map} bytes but the source has {source}"),
+            "error-map-mismatch",
+            vec![("map", size(map)), ("source", size(source))],
+            3,
+        );
+        f.details = serde_json::json!({ "map_size": map, "source_size": source });
+        f
+    }
+
+    pub fn from_imaging(e: ImagingError, image: &Path, map: &Path) -> Self {
+        match e {
+            ImagingError::OutputExists(p) => {
+                let p = p.display().to_string();
+                Self::new(
+                    "image_exists",
+                    format!("{p} already exists and there is no map to resume from"),
+                    "error-image-exists",
+                    vec![("path", p)],
+                    1,
+                )
+            }
+            ImagingError::SizeMismatch { map, source_size } => Self::map_mismatch(map, source_size),
+            ImagingError::Map(e) => Self::map_invalid(map, &e.to_string()),
+            ImagingError::Gone(e) => {
+                let mut f = Self::from_guard(GuardError::Gone(e));
+                f.lines.push("hint-image-resume".into());
+                f
+            }
+            ImagingError::Cancelled(r) => {
+                let mut f = Self::new(
+                    "cancelled",
+                    "cancelled; the map is saved and the copy can be resumed".into(),
+                    "error-image-cancelled",
+                    vec![],
+                    130,
+                );
+                f.details = serde_json::json!({
+                    "image": image.display().to_string(),
+                    "map": map.display().to_string(),
+                    "rescued": r.rescued,
+                    "pending": r.pending,
+                });
+                f
+            }
+            ImagingError::Io(e) => Self::internal(&format!("cannot write the image or map: {e}")),
+        }
+    }
+
     pub fn dmde_parse(reason: &str) -> Self {
         Self::new(
             "dmde_parse_failed",
@@ -381,6 +446,44 @@ impl Out {
             p.files_done,
             p.files_total
         );
+        let _ = std::io::stderr().flush();
+    }
+
+    pub fn image_progress(&mut self, p: ImageProgress) {
+        let (phase, id) = match p.phase {
+            ImagePhase::Copy => ("image_copy", "phase-image-copy"),
+            ImagePhase::Trim => ("image_trim", "phase-image-trim"),
+            ImagePhase::Scrape => ("image_scrape", "phase-image-scrape"),
+            ImagePhase::Retry => ("image_retry", "phase-image-retry"),
+            ImagePhase::Done => return,
+        };
+        if self.stream {
+            if self.throttle(250) {
+                self.emit(&StreamEvent::Progress {
+                    phase: phase.into(),
+                    done: p.rescued,
+                    total: Some(p.size),
+                });
+            }
+            return;
+        }
+        if self.json || self.quiet || !self.tty || !self.throttle(200) {
+            return;
+        }
+        let pct = if p.size > 0 {
+            p.pos as f64 * 100.0 / p.size as f64
+        } else {
+            100.0
+        };
+        let line = format!(
+            "{}: {pct:5.1}%  {} {}  {} {}",
+            self.t(id, &[]),
+            self.t("image-rescued", &[]),
+            size(p.rescued),
+            self.t("image-bad-short", &[]),
+            size(p.bad)
+        );
+        eprint!("\r{line:<78}");
         let _ = std::io::stderr().flush();
     }
 

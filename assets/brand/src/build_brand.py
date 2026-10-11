@@ -2,8 +2,8 @@
 """Generates Rescyo's brand mark and app icon as SVG.
 
 The mark is a rescue ring that is also a disk platter cut into sectors. Three segments are in
-place; the top one, in rescue orange, is rising back into its slot, whose dashed outline still
-shows where it belongs. Geometry is
+place; the top-right one, in rescue orange, is returning to its slot along the diagonal, whose
+dashed outline still shows where it belongs. Geometry is
 computed here so every export (README logo, app icons, Icon Composer layers) stays identical.
 
 Usage: python3 build_brand.py <out-dir>
@@ -81,11 +81,13 @@ def squircle(x0, y0, size, n=5.0, steps=256):
 
 
 Q = math.pi / 2
-# Segments centred on top, right, bottom and left (gaps on the diagonals, like a life ring).
-# The rescued one is the top segment, lifted straight up.
-SLOTS = [(-1.5 * Q, -0.5 * Q), (-0.5 * Q, 0.5 * Q), (0.5 * Q, 1.5 * Q), (1.5 * Q, 2.5 * Q)]
+# The whole mark is turned 45 degrees clockwise: segments centred on the diagonals, gaps
+# straight up, down, left and right. The rescued one is the top-right segment, lifted outwards
+# along its diagonal.
+ROTATION = Q / 2
+SLOTS = [(a + ROTATION, b + ROTATION) for a, b in [(-1.5 * Q, -0.5 * Q), (-0.5 * Q, 0.5 * Q), (0.5 * Q, 1.5 * Q), (1.5 * Q, 2.5 * Q)]]
 RESCUED = 0
-LIFT_ANGLE = -Q
+LIFT_ANGLE = -Q + ROTATION
 LIFT_DX = LIFT * math.cos(LIFT_ANGLE)
 LIFT_DY = LIFT * math.sin(LIFT_ANGLE)
 
@@ -134,8 +136,10 @@ def svg(body, view="0 0 1024 1024", w=1024):
             f'{defs()}\n  {body}\n</svg>\n')
 
 
-# The lifted segment adds weight on top: shift the mark down by half the lift to centre it.
-OPTICAL = f'transform="translate(0 {LIFT / 2:.1f})"'
+# The lifted segment adds weight towards it: shift the mark back by half the lift to centre it.
+OPTICAL = (
+    f'transform="translate({-LIFT / 2 * math.cos(LIFT_ANGLE):.1f} {-LIFT / 2 * math.sin(LIFT_ANGLE):.1f})"'
+)
 
 
 def icon_body():

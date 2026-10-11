@@ -18,14 +18,16 @@ use std::sync::Arc;
 
 use clap::{Args, Parser, Subcommand};
 use rescyo_core::{
-    DeletedMode, ImportError, ImportOptions, RecoverOptions, ScanMode, ScanOptions, Selection, Session,
-    SessionError, SystemResolver,
+    DeletedMode, ImportError, ImportOptions, PartitionStatus, RecoverOptions, ScanMode, ScanOptions,
+    Selection, Session, SessionError, SystemResolver,
 };
 use rescyo_fs::codepage::Codepage;
 use rescyo_fs::{CancelToken, EntryKind, EntryState};
 use rescyo_i18n::{Arg, size};
+use rescyo_io::mapfile::Mapfile;
 use rescyo_io::{
-    BlockSource, FingerprintMatch, GuardedReader, ImageSource, PhysicalDisk, ReadPolicy, SourceFingerprint,
+    BadSectorMap, BlockSource, FingerprintMatch, GuardedReader, ImageSource, PhysicalDisk, ReadPolicy,
+    SourceFingerprint,
 };
 
 use out::{Failure, Out};
@@ -70,6 +72,9 @@ struct SourceArgs {
     /// Extra read attempts for each unreadable sector (default 0: read each sector once).
     #[arg(long, default_value_t = 0)]
     retries: u32,
+    /// The ddrescue map of an image: its unread areas count as unreadable sectors.
+    #[arg(long)]
+    map: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]
@@ -89,6 +94,9 @@ struct SelectArgs {
     /// Only this volume (from `volumes`).
     #[arg(long)]
     volume: Option<i64>,
+    /// Include alternate data streams (shown and recovered as `file:stream`).
+    #[arg(long)]
+    streams: bool,
 }
 
 impl SelectArgs {
@@ -108,6 +116,7 @@ impl SelectArgs {
                 .collect(),
             path_prefix: self.path.clone(),
             volume: self.volume,
+            streams: self.streams,
         }
     }
 }
@@ -188,6 +197,9 @@ enum Command {
         /// Allow a target on a disk Rescyo cannot identify (marked in the report).
         #[arg(long)]
         allow_unverified_target: bool,
+        /// Skip the content check of recovered files.
+        #[arg(long)]
+        no_verify: bool,
         #[command(flatten)]
         select: SelectArgs,
         #[command(flatten)]
@@ -195,6 +207,40 @@ enum Command {
     },
     /// Show a session's source, volumes and journal.
     Info { session: PathBuf },
+    /// Read a disk or image for boot sectors and list the volumes found, including partitions
+    /// missing from the table (nothing is written).
+    Partitions {
+        /// Disk or image file.
+        source: String,
+        #[command(flatten)]
+        src: SourceArgs,
+    },
+    /// Copy a failing disk to an image file first, skipping bad areas (ddrescue-compatible map).
+    Image {
+        /// Disk or image file to copy.
+        source: String,
+        /// Image file to create (or continue, when its map exists).
+        #[arg(long)]
+        to: PathBuf,
+        /// Map file (GNU ddrescue format; default: the image name plus .map).
+        #[arg(long)]
+        map: Option<PathBuf>,
+        /// Extra attempts for each bad sector after the other passes.
+        #[arg(long, default_value_t = 0)]
+        retries: u32,
+        /// Read the second pass and bad areas forwards only.
+        #[arg(long)]
+        no_reverse: bool,
+        /// Copy block size in KiB.
+        #[arg(long, default_value_t = 1024, value_parser = clap::value_parser!(u64).range(1..=65536))]
+        block_kib: u64,
+        /// Logical sector size of an image file (512 or 4096).
+        #[arg(long, default_value_t = 512)]
+        sector_size: u32,
+        /// Allow an image on a disk Rescyo cannot identify.
+        #[arg(long)]
+        allow_unverified_target: bool,
+    },
 }
 
 impl Command {
@@ -207,6 +253,8 @@ impl Command {
             Self::Ls { .. } => "ls",
             Self::Recover { .. } => "recover",
             Self::Info { .. } => "info",
+            Self::Image { .. } => "image",
+            Self::Partitions { .. } => "partitions",
         }
     }
 }
@@ -287,20 +335,55 @@ fn main() -> ExitCode {
             source,
             force_rebind,
             allow_unverified_target,
+            no_verify,
             select,
             src,
-        } => recover(
-            &mut out,
-            session,
-            to,
-            source.as_deref(),
-            *force_rebind,
-            *allow_unverified_target,
-            select,
-            src,
-            &cancel,
-        ),
+        } => {
+            let flags = RecoverFlags {
+                force_rebind: *force_rebind,
+                allow_unverified: *allow_unverified_target,
+                verify: !*no_verify,
+            };
+            recover(
+                &mut out,
+                session,
+                to,
+                source.as_deref(),
+                flags,
+                select,
+                src,
+                &cancel,
+            )
+        }
         Command::Info { session } => info(&mut out, session),
+        Command::Partitions { source, src } => partitions(&mut out, source, src, &cancel),
+        Command::Image {
+            source,
+            to,
+            map,
+            retries,
+            no_reverse,
+            block_kib,
+            sector_size,
+            allow_unverified_target,
+        } => {
+            let opts = rescyo_core::ImageOptions {
+                block: block_kib * 1024,
+                retries: *retries,
+                reverse: !*no_reverse,
+                ..rescyo_core::ImageOptions::default()
+            };
+            image(
+                &mut out,
+                source,
+                to,
+                map.as_deref(),
+                &opts,
+                *sector_size,
+                *allow_unverified_target,
+                &cancel,
+            )
+        }
     };
     match result {
         Ok(code) => ExitCode::from(code),
@@ -330,15 +413,38 @@ fn is_device(path: &str) -> bool {
     false
 }
 
-fn open_source(path: &str, a: &SourceArgs) -> Result<GuardedReader, Failure> {
-    let src: Arc<dyn BlockSource> = if is_device(path) {
+fn open_raw(path: &str, sector_size: u32) -> Result<Arc<dyn BlockSource>, Failure> {
+    Ok(if is_device(path) {
         Arc::new(PhysicalDisk::open(path).map_err(|e| Failure::source_open(path, &e))?)
     } else {
-        Arc::new(
-            ImageSource::open(Path::new(path), a.sector_size).map_err(|e| Failure::source_open(path, &e))?,
-        )
-    };
-    Ok(GuardedReader::new(src, policy(a)))
+        Arc::new(ImageSource::open(Path::new(path), sector_size).map_err(|e| Failure::source_open(path, &e))?)
+    })
+}
+
+/// Opens a Source for reading. `known` holds sectors already known to be unreadable (from the
+/// Session), so they are not read again.
+fn open_source(path: &str, a: &SourceArgs, mut known: BadSectorMap) -> Result<GuardedReader, Failure> {
+    let src = open_raw(path, a.sector_size)?;
+    if let Some(map_path) = &a.map {
+        // Sectors the imager could not read are zeros in the image: report them as unreadable.
+        let text =
+            std::fs::read_to_string(map_path).map_err(|e| Failure::map_invalid(map_path, &e.to_string()))?;
+        let map = Mapfile::parse(&text).map_err(|e| Failure::map_invalid(map_path, &e.to_string()))?;
+        let g = src.geometry();
+        if map.size() != g.size {
+            return Err(Failure::map_mismatch(map.size(), g.size));
+        }
+        for r in map.bad_map(g.logical_sector).iter() {
+            known.mark(r);
+        }
+    }
+    Ok(GuardedReader::with_map(src, policy(a), known))
+}
+
+fn parent_dir(path: &Path) -> &Path {
+    path.parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
 }
 
 fn codepage(name: Option<&str>) -> Result<Option<Codepage>, Failure> {
@@ -400,11 +506,7 @@ fn disks(out: &mut Out) -> Result<u8, Failure> {
 
 /// Creates a new Session for `r` at `path`, refusing a file on the Source's own disk.
 fn new_session(r: &GuardedReader, path: &Path, allow_unverified: bool) -> Result<Session, Failure> {
-    let dir = path
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    rescyo_core::check_destination(&SystemResolver, r.identity(), dir, allow_unverified)
+    rescyo_core::check_destination(&SystemResolver, r.identity(), parent_dir(path), allow_unverified)
         .map_err(|p| Failure::session_on_source(&p))?;
     let fp = SourceFingerprint::compute(r).map_err(Failure::from_guard)?;
     Session::create(path, r.identity(), &fp).map_err(|e| Failure::session(path, e))
@@ -436,7 +538,104 @@ fn scan_data(session: &Path, r: &rescyo_core::ScanReport) -> dto::ScanData {
             })
             .collect(),
         unreadable_sectors: r.unreadable_sectors,
+        partitions: r.partitions.iter().map(partition_row).collect(),
     }
+}
+
+fn partition_row(p: &rescyo_core::FoundPartition) -> dto::PartitionRow {
+    dto::PartitionRow {
+        offset: p.offset,
+        size: p.size,
+        fs: p.fs.as_str().into(),
+        label: p.label.clone(),
+        status: match p.status {
+            PartitionStatus::Listed => "listed",
+            PartitionStatus::Lost => "lost",
+            PartitionStatus::Conflicting => "conflicting",
+            PartitionStatus::Nested => "nested",
+            PartitionStatus::Unpartitioned => "unpartitioned",
+        }
+        .into(),
+        number: p.number,
+        primary_boot: p.primary_boot,
+        backup_boot: p.backup_boot,
+    }
+}
+
+fn print_partitions(out: &Out, rows: &[dto::PartitionRow], only_lost: bool) {
+    for p in rows
+        .iter()
+        .filter(|p| !only_lost || p.status == "lost" || p.status == "conflicting")
+    {
+        let boot = match (p.primary_boot, p.backup_boot) {
+            (true, true) => "partition-boot-both",
+            (true, false) => "partition-boot-primary",
+            (false, true) => "partition-boot-backup",
+            (false, false) => "partition-boot-none",
+        };
+        out.say(
+            &out.t(
+                &format!("partition-{}", p.status),
+                &[
+                    ("offset", size(p.offset).into()),
+                    ("bytes", p.offset.into()),
+                    ("size", size(p.size).into()),
+                    ("fs", p.fs.clone().into()),
+                    (
+                        "label",
+                        p.label
+                            .as_ref()
+                            .map(|l| format!(" \"{l}\""))
+                            .unwrap_or_default()
+                            .into(),
+                    ),
+                    ("number", u64::from(p.number.unwrap_or(0)).into()),
+                    ("boot", out.t(boot, &[]).into()),
+                ],
+            ),
+        );
+    }
+}
+
+fn partitions(out: &mut Out, source: &str, src: &SourceArgs, cancel: &CancelToken) -> Result<u8, Failure> {
+    let r = open_source(source, src, BadSectorMap::new())?;
+    out.say(&out.t("partitions-start", &[("source", source.into())]));
+    let rep =
+        rescyo_core::find_partitions(&r, &mut |p| out.progress(p), cancel).map_err(Failure::from_scan)?;
+    out.end_progress();
+    let mut rows: Vec<dto::PartitionRow> = rep.found.iter().map(partition_row).collect();
+    rows.extend(
+        rep.unmatched
+            .iter()
+            .map(|&(number, offset, size)| dto::PartitionRow {
+                offset,
+                size,
+                fs: "unknown".into(),
+                label: None,
+                status: "empty".into(),
+                number: Some(number),
+                primary_boot: false,
+                backup_boot: false,
+            }),
+    );
+    rows.sort_by_key(|p| p.offset);
+    if !out.machine() {
+        out.say(&out.t("partitions-table", &[("table", rep.partition_table.into())]));
+        print_partitions(out, &rows, false);
+        if rows.is_empty() {
+            out.say(&out.t("partitions-none", &[]));
+        }
+        if rep.unreadable_sectors > 0 {
+            out.say(&out.t("scan-bad-sectors", &[("count", rep.unreadable_sectors.into())]));
+        }
+    }
+    out.done(&dto::PartitionsData {
+        source: source.into(),
+        partition_table: rep.partition_table.into(),
+        partitions: rows,
+        unreadable_sectors: rep.unreadable_sectors,
+    });
+    Ok(0)
 }
 
 fn print_scan(out: &Out, d: &dto::ScanData) {
@@ -463,6 +662,7 @@ fn print_scan(out: &Out, d: &dto::ScanData) {
     if walked == 0 {
         out.say(&out.t("scan-no-volumes", &[]));
     }
+    print_partitions(out, &d.partitions, true);
     if d.unreadable_sectors > 0 {
         out.say(&out.t("scan-bad-sectors", &[("count", d.unreadable_sectors.into())]));
     }
@@ -481,7 +681,7 @@ fn scan(
     cancel: &CancelToken,
 ) -> Result<u8, Failure> {
     let cp = codepage(cp)?;
-    let r = open_source(source, src)?;
+    let r = open_source(source, src, BadSectorMap::new())?;
     let mut s = new_session(&r, session, allow_unverified)?;
     out.say(&out.t("scan-start", &[("source", source.into())]));
     let opts = ScanOptions {
@@ -516,7 +716,7 @@ fn import(
     let cp = codepage(cp)?;
     let bytes = std::fs::read(log).map_err(|e| Failure::dmde_parse(&e.to_string()))?;
     let parsed = rescyo_dmde::parse(&bytes).map_err(|e| Failure::dmde_parse(&e.to_string()))?;
-    let r = open_source(source, src)?;
+    let r = open_source(source, src, BadSectorMap::new())?;
     let mut s = new_session(&r, session, allow_unverified)?;
     let io = ImportOptions {
         volume,
@@ -623,7 +823,7 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
     let s = open_session(session)?;
     let sel = select.selection();
     let entries = s
-        .entries(|e| dirs || e.entry.kind == EntryKind::File)
+        .entries(|e| dirs || e.entry.kind != EntryKind::Directory)
         .map_err(|e| Failure::session(session, e))?;
     let mut rows = Vec::new();
     for e in entries {
@@ -638,6 +838,7 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
             kind: match e.entry.kind {
                 EntryKind::File => "file".into(),
                 EntryKind::Directory => "directory".into(),
+                EntryKind::Stream => "stream".into(),
             },
             state: match e.entry.state {
                 EntryState::Live => "live".into(),
@@ -677,22 +878,39 @@ fn ls(out: &mut Out, session: &Path, select: &SelectArgs, dirs: bool, limit: usi
     Ok(0)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct RecoverFlags {
+    force_rebind: bool,
+    allow_unverified: bool,
+    verify: bool,
+}
+
 #[allow(clippy::too_many_arguments, reason = "one argument per command-line option")]
 fn recover(
     out: &mut Out,
     session: &Path,
     to: &Path,
     source: Option<&str>,
-    force_rebind: bool,
-    allow_unverified: bool,
+    flags: RecoverFlags,
     select: &SelectArgs,
     src_args: &SourceArgs,
     cancel: &CancelToken,
 ) -> Result<u8, Failure> {
+    let RecoverFlags {
+        force_rebind,
+        allow_unverified,
+        verify,
+    } = flags;
     let s = open_session(session)?;
     let rec = s.source().map_err(|e| Failure::session(session, e))?;
     let path = source.map_or_else(|| rec.identity.path.clone(), str::to_owned);
-    let r = open_source(&path, src_args)?;
+    // Sectors this disk already failed to read are not read again (an image gets its own map).
+    let known = if path == rec.identity.path {
+        s.bad_map().map_err(|e| Failure::session(session, e))?
+    } else {
+        BadSectorMap::new()
+    };
+    let r = open_source(&path, src_args, known)?;
     let fresh = SourceFingerprint::compute(&r).map_err(Failure::from_guard)?;
     match rec.fingerprint.compare(&fresh) {
         FingerprintMatch::Match => {
@@ -717,6 +935,7 @@ fn recover(
         target: to.to_path_buf(),
         selection: select.selection(),
         allow_unverified_target: allow_unverified,
+        verify,
     };
     let plan = rescyo_core::plan(&s, &SystemResolver, &opts).map_err(Failure::from_recovery)?;
     if !plan.problems.is_empty() {
@@ -814,6 +1033,83 @@ fn info(out: &mut Out, session: &Path) -> Result<u8, Failure> {
     }
     out.done(&data);
     Ok(0)
+}
+
+#[allow(clippy::too_many_arguments, reason = "one argument per command-line option")]
+fn image(
+    out: &mut Out,
+    source: &str,
+    to: &Path,
+    map: Option<&Path>,
+    opts: &rescyo_core::ImageOptions,
+    sector_size: u32,
+    allow_unverified: bool,
+    cancel: &CancelToken,
+) -> Result<u8, Failure> {
+    let map_path = map.map_or_else(
+        || {
+            let mut m = to.as_os_str().to_owned();
+            m.push(".map");
+            PathBuf::from(m)
+        },
+        Path::to_path_buf,
+    );
+    let src = open_raw(source, sector_size)?;
+    for p in [to, map_path.as_path()] {
+        rescyo_core::check_destination(&SystemResolver, src.identity(), parent_dir(p), allow_unverified)
+            .map_err(|p| Failure::session_on_source(&p))?;
+    }
+    out.say(&out.t(
+        "image-start",
+        &[
+            ("source", source.into()),
+            ("image", to.display().to_string().into()),
+            ("map", map_path.display().to_string().into()),
+        ],
+    ));
+    let result = rescyo_core::image(
+        src.as_ref(),
+        to,
+        &map_path,
+        opts,
+        &mut |p| out.image_progress(p),
+        cancel,
+    );
+    out.end_progress();
+    let report = match result {
+        Ok(r) => r,
+        Err(e) => return Err(Failure::from_imaging(e, to, &map_path)),
+    };
+    let data = dto::ImageData {
+        source: source.into(),
+        image: to.display().to_string(),
+        map: report.map.clone(),
+        size: report.size,
+        rescued: report.rescued,
+        bad_bytes: report.bad_bytes,
+        bad_areas: report.bad_areas,
+        resumed: report.resumed,
+    };
+    if !out.machine() {
+        out.say(&out.t(
+            "image-done",
+            &[
+                ("rescued", size(report.rescued).into()),
+                ("size", size(report.size).into()),
+            ],
+        ));
+        if report.bad_areas > 0 {
+            out.say(&out.t(
+                "image-bad",
+                &[
+                    ("count", report.bad_areas.into()),
+                    ("size", size(report.bad_bytes).into()),
+                ],
+            ));
+        }
+    }
+    out.done(&data);
+    Ok(if report.bad_bytes == 0 { 0 } else { 5 })
 }
 
 #[cfg(test)]

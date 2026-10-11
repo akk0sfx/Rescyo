@@ -10,6 +10,13 @@ pub const ATTR_STANDARD_INFORMATION: u32 = 0x10;
 pub const ATTR_ATTRIBUTE_LIST: u32 = 0x20;
 pub const ATTR_FILE_NAME: u32 = 0x30;
 pub const ATTR_DATA: u32 = 0x80;
+pub const ATTR_REPARSE_POINT: u32 = 0xC0;
+/// Attribute flags.
+pub const FLAG_COMPRESSED: u16 = 0x0001;
+pub const FLAG_COMPRESSION_MASK: u16 = 0x00FF;
+pub const FLAG_ENCRYPTED: u16 = 0x4000;
+/// Reparse tag of a WOF-compressed file.
+pub const IO_REPARSE_TAG_WOF: u32 = 0x8000_0017;
 const ATTR_END: u32 = 0xFFFF_FFFF;
 const MAX_ATTRS: usize = 256;
 
@@ -107,6 +114,8 @@ pub enum AttrBody<'a> {
         alloc_size: u64,
         data_size: u64,
         init_size: u64,
+        /// log2 of the clusters per compression unit (0 = not compressed).
+        compression_unit: u8,
     },
 }
 
@@ -162,6 +171,7 @@ pub fn attributes<'a>(rec: &'a [u8], h: &Header) -> Vec<Attr<'a>> {
                 alloc_size: asz,
                 data_size: dsz,
                 init_size: isz,
+                compression_unit: u8_at(a, 34).unwrap_or(0),
             }
         } else {
             let (Some(vl), Some(vo)) = (u32_at(a, 16), u16_at(a, 20)) else {
@@ -284,6 +294,19 @@ pub fn standard_times(v: &[u8]) -> Times {
         modified: t(8),
         accessed: t(24),
     }
+}
+
+/// WOF compression from a reparse point's value: `Some(Ok(algorithm))` for a file-backed WOF
+/// file, `Some(Err(provider))` for another provider (e.g. 1 = backed by a WIM file elsewhere).
+pub fn wof_algorithm(reparse: &[u8]) -> Option<Result<u32, u32>> {
+    if u32_at(reparse, 0)? != IO_REPARSE_TAG_WOF {
+        return None;
+    }
+    let provider = u32_at(reparse, 12)?;
+    if provider != 2 {
+        return Some(Err(provider));
+    }
+    Some(Ok(u32_at(reparse, 20)?))
 }
 
 /// Bytes per MFT record from the boot sector's signed "clusters per record" field.

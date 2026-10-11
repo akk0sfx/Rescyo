@@ -11,7 +11,7 @@
 use std::collections::HashSet;
 
 use rescyo_core::{ImportError, ImportOptions, Session, import_dmde};
-use rescyo_fs::{CancelToken, EntryKind, Extent, VecSink};
+use rescyo_fs::{CancelToken, EntryKind, VecSink};
 use rescyo_io::{GuardedReader, ReadPolicy, SourceFingerprint};
 use rescyo_testkit::FileState;
 use sha2::{Digest, Sha256};
@@ -76,17 +76,11 @@ fn import_finds_a_volume_with_no_boot_sector_and_no_partition_table() {
         .iter()
         .map(|e| {
             let mut out = Vec::new();
-            for x in &e.entry.layout.extents {
-                match x {
-                    Extent::Disk { offset, len } => {
-                        let mut b = vec![0u8; *len as usize];
-                        r.read(*offset, &mut b).unwrap();
-                        out.extend_from_slice(&b);
-                    }
-                    Extent::Zero { len } => out.resize(out.len() + *len as usize, 0),
-                    Extent::Inline { data } => out.extend_from_slice(data),
-                }
-            }
+            rescyo_fs::content::stream(&r, &e.entry.layout, e.entry.layout.len(), &mut |d, _| {
+                out.extend_from_slice(d);
+                Ok(())
+            })
+            .unwrap();
             sha(&out)
         })
         .collect();

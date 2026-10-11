@@ -23,6 +23,8 @@ ls-total = 共 { $count } 项
 
 recover-plan = { $files } 个文件，{ $size }，目标：{ $target }
 recover-done = 已恢复 { $files } 个文件（{ $size }）。报告：{ $report }
+recover-intact = { $count } 个文件已按其格式校验，完好无损。
+recover-damaged = { $count } 个文件无法按其格式正确读取，请查看报告。
 recover-partial = { $count } 个文件含有用零填充的无法读取部分，请查看报告。
 recover-guessed = { $count } 个文件在没有分配信息的情况下按连续方式读取。使用前请先检查。
 recover-resumed = { $count } 个文件已在上次运行中写入目标并通过校验。
@@ -54,3 +56,34 @@ error-cancelled = 已停止。目前找到的内容都保存在会话中。
 error-preflight = 未写入任何内容。请先解决以下问题：
 
 hint-admin = 读取磁盘需要 Windows 管理员权限，或在 Linux 和 macOS 上使用 sudo。
+
+## Imaging
+image-start = 正在将 { $source } 制作镜像到 { $image }（映射文件：{ $map }）…
+phase-image-copy = 复制
+phase-image-trim = 修剪坏区
+phase-image-scrape = 逐扇区读取坏区
+phase-image-retry = 重试坏扇区
+image-rescued = 已救回
+image-bad-short = 坏
+image-done = 镜像完成：已救回 { $rescued },共 { $size }。
+image-bad = { $count } 个坏区（{ $size }）无法读取。它们在镜像中为零,并已在映射文件中标记;扫描镜像时请使用 --map。
+error-image-exists = { $path } 已存在且没有映射文件。Rescyo 从不覆盖镜像;请换一个文件名,或指定它的 --map。
+error-map-invalid = 无法读取映射文件 { $path }：{ $reason }
+error-map-mismatch = 映射文件描述的磁盘大小为 { $map },而源为 { $source }。
+error-image-cancelled = 已停止。映射文件已保存;再次运行同一命令即可继续。
+hint-image-resume = 映射文件已保存。重新连接磁盘后再次运行同一命令即可继续。
+
+## Partition search
+partitions-start = 正在 { $source } 上搜索引导扇区…
+partitions-table = 分区表：{ $table }
+partitions-none = 未找到任何卷。
+partition-listed = #{ $number } 位于 { $offset }：{ $fs }{ $label }，{ $size }，在分区表中（{ $boot }）
+partition-lost = 丢失的分区位于 { $offset }（字节 { $bytes }）：{ $fs }{ $label }，{ $size }，不在分区表中（{ $boot }）
+partition-conflicting = 位于 { $offset }（字节 { $bytes }）的卷：{ $fs }{ $label }，{ $size }，与分区表中的条目重叠（{ $boot }）
+partition-nested = 位于 { $offset } 的嵌套卷：{ $fs }{ $label }，{ $size }（{ $boot }）
+partition-empty = #{ $number } 位于 { $offset }，{ $size }：起始处未找到卷
+partition-boot-both = 引导扇区及其备份
+partition-boot-primary = 引导扇区
+partition-boot-backup = 仅有备份引导扇区
+partition-boot-none = 无引导扇区
+partition-unpartitioned = 没有分区表：整个磁盘是一个卷，{ $fs }{ $label }，{ $size }（{ $boot }）

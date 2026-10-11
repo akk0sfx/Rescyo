@@ -17,18 +17,15 @@ use rescyo_testkit::{FileState, Scenario, require_corpus};
 use sha2::{Digest, Sha256};
 
 fn read_layout(r: &GuardedReader, extents: &[Extent]) -> Vec<u8> {
+    let layout = rescyo_fs::DataLayout {
+        extents: extents.to_vec(),
+    };
     let mut out = Vec::new();
-    for e in extents {
-        match e {
-            Extent::Disk { offset, len } => {
-                let mut b = vec![0u8; *len as usize];
-                r.read(*offset, &mut b).unwrap();
-                out.extend_from_slice(&b);
-            }
-            Extent::Zero { len } => out.resize(out.len() + *len as usize, 0),
-            Extent::Inline { data } => out.extend_from_slice(data),
-        }
-    }
+    rescyo_fs::content::stream(r, &layout, layout.len(), &mut |d, _| {
+        out.extend_from_slice(d);
+        Ok(())
+    })
+    .unwrap();
     out
 }
 
@@ -74,7 +71,7 @@ fn intact_ntfs_recovers_every_file_with_path_and_mtime() {
             .entries
             .iter()
             .enumerate()
-            .filter(|(_, x)| x.kind == EntryKind::File)
+            .filter(|(_, x)| x.kind != EntryKind::Directory)
             .map(|(i, x)| (sink.path_of(EntryId(i as u64 + 1)), x))
             .collect();
         for f in e.files.iter().filter(|f| f.state == FileState::Live) {
@@ -106,7 +103,7 @@ fn damaged_ntfs_recovers_every_file_that_survives() {
             let shas: HashMap<String, u64> = sink
                 .entries
                 .iter()
-                .filter(|x| x.kind == EntryKind::File)
+                .filter(|x| x.kind != EntryKind::Directory)
                 .map(|x| (sha(&read_layout(&r, &x.layout.extents)), x.size))
                 .collect();
             let mut ok = 0;

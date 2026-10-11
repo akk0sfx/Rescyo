@@ -36,11 +36,23 @@ _Avoid_: error log, bad block list
 **Degradation alarm**:
 The automatic pause of a Scan or Recovery when read errors or slowness cross a threshold, advising to image the Source first.
 
+**Imaging**:
+Copying a whole Source to an image file in passes that take the easy data first and the damaged areas last, so a failing disk is read as little as possible. An interrupted Imaging continues from its Image map.
+_Avoid_: cloning, backup
+
+**Image map**:
+The ddrescue mapfile kept next to an image, saying for every byte range whether it was rescued, is still pending or is unreadable. A Scan of the image takes it as the image's Bad-sector map.
+_Avoid_: log file
+
 ### Volumes and hints
 
 **Volume candidate**:
 A hypothesis that a file system of a given type and geometry (cluster size, offset of cluster #2) exists on a Source.
 _Avoid_: partition (a partition is a table entry; a Volume candidate may have none)
+
+**Lost partition**:
+A volume found by its boot sectors (and confirmed by its tables) that the partition table does not list and that overlaps nothing the table lists. Rescyo reports it; rewriting the table is a separate, expert decision.
+_Avoid_: deleted partition, missing drive
 
 **Volume**:
 The Volume candidate chosen for analysis in a Session.
@@ -57,6 +69,10 @@ A confirmed directory start used to begin tree reconstruction without a full sca
 **Entry**:
 A file or directory discovered in a Session, live or deleted, with its name, path, size, timestamps and byte extents.
 _Avoid_: file record, item, node, object
+
+**Named stream**:
+A second, named content of a file (an NTFS alternate data stream), listed and recovered as `file:stream` beside its file, and only when asked for.
+_Avoid_: fork, ADS (in user-facing text)
 
 **Assembly method**:
 How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.

@@ -10,6 +10,7 @@ use rescyo_ntfs::{NtfsGeometry, NtfsScanner};
 use rescyo_part::TableKind;
 use serde::Serialize;
 
+use crate::partsearch::{BootScanner, FoundPartition, PartitionStatus};
 use crate::session::{Session, SessionError};
 
 const CHUNK: u64 = 4 << 20;
@@ -88,6 +89,53 @@ pub struct ScanReport {
     pub mode: ScanMode,
     pub volumes: Vec<VolumeSummary>,
     pub unreadable_sectors: u64,
+    /// Volumes found by their boot sectors during a deep scan, with their table status.
+    pub partitions: Vec<FoundPartition>,
+}
+
+/// What a partition search found.
+#[derive(Debug, Clone, Serialize)]
+pub struct PartitionReport {
+    pub partition_table: &'static str,
+    /// Volumes found by their boot sectors.
+    pub found: Vec<FoundPartition>,
+    /// Table entries with no volume found at their start: (number, offset, size).
+    pub unmatched: Vec<(u32, u64, u64)>,
+    pub unreadable_sectors: u64,
+}
+
+/// Reads the whole Source once for boot sectors and compares what they describe with the
+/// partition table. Nothing is written.
+pub fn find_partitions(
+    r: &GuardedReader,
+    progress: &mut dyn FnMut(Progress),
+    cancel: &CancelToken,
+) -> Result<PartitionReport, ScanError> {
+    let size = r.geometry().size;
+    let table = rescyo_part::read_partitions(r)?;
+    let mut boots = BootScanner::new();
+    read_through(r, 0..size, cancel, progress, |at, chunk| boots.feed(at, chunk))?;
+    let found = boots.finish(r, &table)?;
+    let unmatched = table
+        .partitions
+        .iter()
+        .filter(|p| !found.iter().any(|f| f.offset == p.offset))
+        .map(|p| (p.number, p.offset, p.size))
+        .collect();
+    Ok(PartitionReport {
+        partition_table: table_name(table.kind),
+        found,
+        unmatched,
+        unreadable_sectors: r.bad_map().bad_sectors(),
+    })
+}
+
+fn table_name(k: TableKind) -> &'static str {
+    match k {
+        TableKind::Mbr => "mbr",
+        TableKind::Gpt => "gpt",
+        TableKind::None => "none",
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -209,13 +257,31 @@ pub fn scan(
 
     // One sequential pass serves every deep scanner.
     let (mut fat_scan, mut ntfs_scan) = (None, None);
+    let mut partitions = Vec::new();
     if opts.mode == ScanMode::Deep {
         let mut fs = FatScanner::new(0..size);
         let mut ns = NtfsScanner::new(0..size);
+        let mut boots = BootScanner::new();
         read_through(r, 0..size, cancel, progress, |at, chunk| {
             fs.feed(at, chunk);
             ns.feed(at, chunk);
+            boots.feed(at, chunk);
         })?;
+        // Volumes found by their boot sectors (lost partitions included) are probed like
+        // table entries, so they carry boot-sector evidence.
+        partitions = boots.finish(r, &table)?;
+        for p in partitions.iter().filter(|p| p.status != PartitionStatus::Nested) {
+            for f in rescyo_fat::probe_boot(r, p.offset)? {
+                cands.push(Cand::Fat(f.geometry, f.evidence, f.score));
+            }
+            for f in rescyo_ntfs::probe_boot(r, p.offset, Some(p.offset + p.size))? {
+                cands.push(Cand::Ntfs(f.geometry, f.evidence, f.score));
+            }
+        }
+        session.journal(
+            "partitions_found",
+            &serde_json::to_value(&partitions).unwrap_or_default(),
+        )?;
         let fs = fs.finish();
         let ns = ns.finish();
         for f in rescyo_fat::infer_volumes(r, &fs)? {
@@ -277,14 +343,11 @@ pub fn scan(
     }
 
     let mut report = ScanReport {
-        partition_table: match table.kind {
-            TableKind::Mbr => "mbr",
-            TableKind::Gpt => "gpt",
-            TableKind::None => "none",
-        },
+        partition_table: table_name(table.kind),
         mode: opts.mode,
         volumes: Vec::new(),
         unreadable_sectors: 0,
+        partitions,
     };
     let mut chosen: Vec<Range<u64>> = Vec::new();
     for c in &merged {

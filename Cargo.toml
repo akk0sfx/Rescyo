@@ -5,7 +5,7 @@ exclude = ["fuzz"]
 default-members = ["crates/*"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.99"
 license = "GPL-3.0-or-later"
@@ -24,6 +24,8 @@ rescyo-dmde = { path = "crates/rescyo-dmde" }
 rescyo-core = { path = "crates/rescyo-core" }
 rescyo-i18n = { path = "crates/rescyo-i18n" }
 rescyo-testkit = { path = "crates/rescyo-testkit" }
+rescyo-verify = { path = "crates/rescyo-verify" }
+rescyo-codec = { path = "crates/rescyo-codec" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

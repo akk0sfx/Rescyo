@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand/logo.svg" width="132" alt="Логотип Rescyo: спасательный круг, верхний сегмент которого возвращается на место">
+<img src="assets/brand/logo.svg" width="132" alt="Логотип Rescyo: спасательный круг, правый верхний сегмент которого возвращается на место">
 
 # Rescyo
 
@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha%20v0.1-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.2-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#платформы)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 [![unsafe](https://img.shields.io/badge/unsafe-forbidden%20in%20parsers-14965F)](CONTRIBUTING.md#safety-rules)
@@ -26,7 +26,7 @@ Rescyo возвращает файлы с повреждённых, отформ
 Бесплатная open-source альтернатива DMDE, R-Studio и UFS Explorer.
 
 > [!IMPORTANT]
-> **Альфа (v0.1).** Командная строка восстанавливает FAT, exFAT и NTFS и проходит проверку побайтного восстановления, но подписанных сборок пока нет. Всегда восстанавливайте на другой диск, а умирающий диск сначала снимайте в образ.
+> **Альфа (v0.2).** Командная строка восстанавливает FAT, exFAT и NTFS (включая сжатые файлы и альтернативные потоки), снимает образ с умирающего диска с картой в формате ddrescue и находит потерянные разделы; она проходит проверку побайтного восстановления, но подписанных сборок пока нет. Всегда восстанавливайте на другой диск, а умирающий диск сначала снимайте в образ.
 
 ## Почему Rescyo
 
@@ -90,6 +90,8 @@ cargo build --release
 ```sh
 rescyo disks --json                              # список дисков
 rescyo scan /dev/sdb --session flash.db          # найти тома и папки (только чтение)
+rescyo image /dev/sdb --to /mnt/backup/flash.img  # умирающий диск: сначала образ (с продолжением)
+rescyo partitions /dev/sdb                       # найти разделы, которых нет в таблице
 rescyo scan /dev/sdb --session flash.db --deep   # искать и потерянные тома и папки
 rescyo ls flash.db --deleted --ext jpg,docx      # посмотреть найденное
 rescyo recover flash.db --to /mnt/backup/flash   # скопировать с отчётом SHA-256
@@ -126,7 +128,7 @@ flowchart LR
 |---|---|---|
 | FAT12, FAT16, FAT32 | Полная: потерянные тома, деревья папок, удалённые файлы | v0.1 |
 | exFAT | Полная | v0.1 |
-| NTFS | Полная: MFT, удалённые файлы; сжатие, разрежённые файлы и ADS — в v0.2 | v0.1 |
+| NTFS | Полная: MFT, удалённые и разрежённые файлы; сжатые (LZNT1) и WOF-сжатые (XPRESS, LZX) файлы и альтернативные потоки — с v0.2 | v0.1 |
 | ext4, HFS+, APFS, Btrfs | Экспериментально: чтение целой ФС и удалённые файлы, пока живы метаданные | v0.3–v0.4 |
 | ReFS | В планах | v2 |
 

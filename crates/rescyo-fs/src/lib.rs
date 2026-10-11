@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod codepage;
+pub mod content;
 mod model;
 mod time;
 

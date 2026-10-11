@@ -78,6 +78,35 @@ pub struct ScanData {
     pub mode: String,
     pub volumes: Vec<Volume>,
     pub unreadable_sectors: u64,
+    /// Volumes found by their boot sectors (deep scans only).
+    #[serde(default)]
+    pub partitions: Vec<PartitionRow>,
+}
+
+/// A volume found by its boot sectors, or a table entry with nothing found at its start.
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PartitionRow {
+    pub offset: u64,
+    pub size: u64,
+    /// `fat12`, `fat16`, `fat32`, `exfat`, `ntfs`, or `unknown` for an empty table entry.
+    pub fs: String,
+    pub label: Option<String>,
+    /// `listed` (in the table), `lost` (not in the table, free space), `conflicting` (overlaps a
+    /// table entry), `nested` (inside another volume), `unpartitioned` (no table; the volume starts at
+    /// byte 0) or `empty` (a table entry with no volume).
+    pub status: String,
+    /// Table entry number, when listed.
+    pub number: Option<u32>,
+    pub primary_boot: bool,
+    pub backup_boot: bool,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct PartitionsData {
+    pub source: String,
+    pub partition_table: String,
+    pub partitions: Vec<PartitionRow>,
+    pub unreadable_sectors: u64,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -118,6 +147,7 @@ pub struct EntryRow {
     pub volume: i64,
     pub path: String,
     /// `file` or `directory`.
+    /// `file`, `directory` or `stream` (a named stream, shown as `file:stream`).
     pub kind: String,
     /// `live` or `deleted`.
     pub state: String,
@@ -177,6 +207,21 @@ pub struct InfoData {
     pub journal: Vec<JournalRow>,
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct ImageData {
+    pub source: String,
+    pub image: String,
+    /// The ddrescue mapfile describing which parts of the image hold real data.
+    pub map: String,
+    pub size: u64,
+    pub rescued: u64,
+    /// Bytes that could not be read; zeros in the image.
+    pub bad_bytes: u64,
+    pub bad_areas: u64,
+    /// The run continued an earlier, interrupted copy.
+    pub resumed: bool,
+}
+
 /// Every schema, by command name, for the schema test (which can also rewrite them).
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn schemas() -> Vec<(&'static str, serde_json::Value)> {
@@ -193,5 +238,7 @@ pub fn schemas() -> Vec<(&'static str, serde_json::Value)> {
         ("ls", s::<LsData>()),
         ("recover", s::<RecoverData>()),
         ("info", s::<InfoData>()),
+        ("image", s::<ImageData>()),
+        ("partitions", s::<PartitionsData>()),
     ]
 }

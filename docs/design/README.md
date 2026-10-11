@@ -6,7 +6,7 @@ One visual language for the GUI, the TUI, the website and the README. People ope
 
 ![Rescyo app icon](../../assets/brand/png/app-icon-256.png)
 
-A rescue ring that is also a disk platter cut into sectors. Three segments are in place; the top one, in rescue orange, is rising back into its slot, whose dashed outline still shows where it belongs. It says what the tool does without a single letter, survives at 16 px, and stays clear of the usual "crosshair", "pie chart" and "cloud with arrow" icons.
+A rescue ring that is also a disk platter cut into sectors, set on the diagonal. Three segments are in place; the top-right one, in rescue orange, is returning to its slot along the diagonal, whose dashed outline still shows where it belongs. It says what the tool does without a single letter, survives at 16 px, and stays clear of the usual "crosshair", "pie chart" and "cloud with arrow" icons.
 
 | File | Use |
 |---|---|
@@ -17,7 +17,7 @@ A rescue ring that is also a disk platter cut into sectors. Three segments are i
 | `assets/brand/png/` | Pre-rendered sizes 16–1024 |
 | `assets/brand/src/build_brand.py` | Generates everything above. Edit the geometry there, never the SVGs by hand |
 
-Rules: keep clear space equal to the gap between segments times four; never recolour the white segments, rotate the mark, or move the orange segment to another slot (its position is the meaning); on photos, use the tile, not the bare mark.
+Rules: keep clear space equal to the gap between segments times four; never recolour the white segments, rotate the mark, or move the orange segment out of the top-right slot (its position is the meaning); on photos, use the tile, not the bare mark.
 
 ## Color
 

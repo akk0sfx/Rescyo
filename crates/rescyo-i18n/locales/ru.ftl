@@ -47,6 +47,12 @@ recover-done = Восстановлено { $files ->
         [few] { $files } файла
        *[many] { $files } файлов
     } ({ $size }). Отчёт: { $report }
+recover-intact = Проверено по формату и целы: { $count }.
+recover-damaged = { $count ->
+        [one] { $count } файл не читается как свой формат; см. отчёт.
+        [few] { $count } файла не читаются как свой формат; см. отчёт.
+       *[many] { $count } файлов не читаются как свой формат; см. отчёт.
+    }
 recover-partial = { $count ->
         [one] У { $count } файла есть нечитаемые части, заполненные нулями; см. отчёт.
        *[other] У { $count } файлов есть нечитаемые части, заполненные нулями; см. отчёт.
@@ -85,3 +91,38 @@ error-cancelled = Остановлено. Всё найденное сохран
 error-preflight = Ничего не записано. Сначала устраните проблемы:
 
 hint-admin = Для чтения дисков нужны права администратора в Windows или sudo в Linux и macOS.
+
+## Imaging
+image-start = Снимаю образ { $source } в { $image } (карта: { $map })…
+phase-image-copy = Копирование
+phase-image-trim = Обрезка плохих зон
+phase-image-scrape = Дочитка плохих зон
+phase-image-retry = Повтор плохих секторов
+image-rescued = спасено
+image-bad-short = плохих
+image-done = Образ готов: спасено { $rescued } из { $size }.
+image-bad = { $count ->
+        [one] { $count } плохая зона ({ $size }) не прочиталась.
+        [few] { $count } плохие зоны ({ $size }) не прочитались.
+       *[many] { $count } плохих зон ({ $size }) не прочитались.
+    } В образе на их месте нули, в карте они отмечены; при скане образа укажите --map.
+error-image-exists = { $path } уже существует, а карты к нему нет. Rescyo никогда не перезаписывает образ; выберите другое имя или укажите его --map.
+error-map-invalid = Не удаётся прочитать карту { $path }: { $reason }
+error-map-mismatch = Карта описывает диск размером { $map }, а у источника { $source }.
+error-image-cancelled = Остановлено. Карта сохранена; запустите ту же команду, чтобы продолжить.
+hint-image-resume = Карта сохранена. Подключите диск снова и запустите ту же команду, чтобы продолжить.
+
+## Partition search
+partitions-start = Ищу загрузочные секторы на { $source }…
+partitions-table = Таблица разделов: { $table }
+partitions-none = Тома не найдены.
+partition-listed = №{ $number } по смещению { $offset }: { $fs }{ $label }, { $size }, есть в таблице ({ $boot })
+partition-lost = Потерянный раздел по смещению { $offset } (байт { $bytes }): { $fs }{ $label }, { $size }, нет в таблице ({ $boot })
+partition-conflicting = Том по смещению { $offset } (байт { $bytes }): { $fs }{ $label }, { $size }, пересекается с разделом из таблицы ({ $boot })
+partition-nested = Том внутри другого тома по смещению { $offset }: { $fs }{ $label }, { $size } ({ $boot })
+partition-empty = №{ $number } по смещению { $offset }, { $size }: в его начале том не найден
+partition-boot-both = загрузочный сектор и копия
+partition-boot-primary = загрузочный сектор
+partition-boot-backup = только резервная копия загрузочного сектора
+partition-boot-none = нет загрузочного сектора
+partition-unpartitioned = Таблицы разделов нет: весь диск — один том, { $fs }{ $label }, { $size } ({ $boot })

@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rescyo_fs::{CancelToken, EntryKind, EntryState, Extent, Parent, TimeZone, Times, Timestamp};
+use rescyo_fs::{CancelToken, EntryKind, EntryState, Parent, TimeZone, Times, Timestamp};
 use rescyo_io::device::{Placement, TargetInfo};
 use rescyo_io::{GuardError, GuardedReader, SourceIdentity};
 use serde::Serialize;
@@ -68,6 +68,8 @@ pub struct Selection {
     /// Only paths starting with this prefix (`/`-separated, as shown by `ls`).
     pub path_prefix: Option<String>,
     pub volume: Option<i64>,
+    /// Include named data streams (NTFS alternate data streams).
+    pub streams: bool,
 }
 
 impl Selection {
@@ -88,7 +90,8 @@ impl Selection {
             .as_deref()
             .is_none_or(|p| path.starts_with(p.trim_start_matches('/')));
         let vol_ok = self.volume.is_none_or(|v| v == e.volume);
-        state_ok && ext_ok && prefix_ok && vol_ok
+        let kind_ok = self.streams || e.entry.kind != EntryKind::Stream;
+        state_ok && ext_ok && prefix_ok && vol_ok && kind_ok
     }
 }
 
@@ -98,6 +101,8 @@ pub struct RecoverOptions {
     pub selection: Selection,
     /// Accept a Target whose devices cannot be determined (recorded in the Report).
     pub allow_unverified_target: bool,
+    /// Check each recovered file's content against its format (JPEG, PNG, ZIP, PDF, …).
+    pub verify: bool,
 }
 
 /// Something that stops a Recovery before any byte is written.
@@ -149,6 +154,7 @@ pub struct Plan {
     pub problems: Vec<Problem>,
     pub target_unverified: bool,
     pub target_info: TargetInfo,
+    pub verify: bool,
 }
 
 /// Checks that `path` (a Target or a Session file) is on devices disjoint from the Source.
@@ -236,7 +242,7 @@ pub fn plan(
     let mut bytes = 0u64;
     let limit = info.max_file_size();
 
-    for e in all.iter().filter(|e| e.entry.kind == EntryKind::File) {
+    for e in all.iter().filter(|e| e.entry.kind != EntryKind::Directory) {
         // Source path: names from the root, with the lost-folder prefix.
         let mut chain: Vec<&StoredEntry> = vec![e];
         let mut lost = None;
@@ -341,6 +347,7 @@ pub fn plan(
         problems,
         target_unverified,
         target_info: info,
+        verify: opts.verify,
     })
 }
 
@@ -422,6 +429,7 @@ pub fn run(
             state: item.entry.entry.state,
             assembly: item.entry.entry.assembly,
             integrity: Integrity::Unverified,
+            integrity_detail: None,
             sha256: None,
             unreadable: Vec::new(),
             renamed: item.renamed,
@@ -456,10 +464,20 @@ pub fn run(
         }) {
             Ok((sha, unreadable)) => {
                 record.sha256 = Some(sha);
-                record.integrity = if unreadable.is_empty() {
-                    Integrity::Unverified
-                } else {
+                record.integrity = if !unreadable.is_empty() {
                     Integrity::Partial
+                } else if plan.verify {
+                    // Check what was actually written, the way an application would read it.
+                    match rescyo_verify::verify_file(&path, &item.entry.entry.name) {
+                        rescyo_verify::Verdict::Intact => Integrity::Intact,
+                        rescyo_verify::Verdict::Damaged(why) => {
+                            record.integrity_detail = Some(why);
+                            Integrity::Damaged
+                        }
+                        rescyo_verify::Verdict::Unverified => Integrity::Unverified,
+                    }
+                } else {
+                    Integrity::Unverified
                 };
                 record.unreadable = unreadable;
             }
@@ -514,71 +532,19 @@ fn copy_one(
     let mut out = File::create_new(path)?;
     let mut hasher = Sha256::new();
     let mut unreadable: Vec<[u64; 2]> = Vec::new();
-    let mut pos = 0u64;
-    let size = e.entry.size;
-    let mut buf = vec![0u8; CHUNK];
-    let put = |data: &[u8], out: &mut File, hasher: &mut Sha256, pos: &mut u64| -> std::io::Result<()> {
+    let mut sink = |data: &[u8], bad: &[std::ops::Range<u64>]| -> std::io::Result<()> {
         out.write_all(data)?;
         hasher.update(data);
-        *pos += data.len() as u64;
+        for b in bad {
+            push_range(&mut unreadable, b.start, b.end - b.start);
+        }
+        progress(data.len() as u64);
         Ok(())
     };
-    for x in &e.entry.layout.extents {
-        if pos >= size {
-            break;
-        }
-        match x {
-            Extent::Disk { offset, len } => {
-                let mut done = 0u64;
-                let len = (*len).min(size - pos);
-                while done < len {
-                    let n = usize::try_from((len - done).min(CHUNK as u64)).unwrap_or(CHUNK);
-                    let chunk = buf.get_mut(..n).unwrap_or_default();
-                    let at = offset + done;
-                    match r.read(at, chunk) {
-                        Ok(rep) => {
-                            for u in rep.unreadable {
-                                push_range(&mut unreadable, pos + (u.start - at), u.end - u.start);
-                            }
-                        }
-                        Err(GuardError::OutOfBounds) => {
-                            chunk.fill(0);
-                            push_range(&mut unreadable, pos, n as u64);
-                        }
-                        Err(g) => return Err(CopyError::Guard(g)),
-                    }
-                    put(chunk, &mut out, &mut hasher, &mut pos)?;
-                    done += n as u64;
-                    progress(n as u64);
-                }
-            }
-            Extent::Zero { len } => {
-                let mut left = (*len).min(size - pos);
-                buf.fill(0);
-                while left > 0 {
-                    let n = usize::try_from(left.min(CHUNK as u64)).unwrap_or(CHUNK);
-                    put(buf.get(..n).unwrap_or_default(), &mut out, &mut hasher, &mut pos)?;
-                    left -= n as u64;
-                }
-            }
-            Extent::Inline { data } => {
-                let n = usize::try_from((data.len() as u64).min(size - pos)).unwrap_or(0);
-                put(data.get(..n).unwrap_or_default(), &mut out, &mut hasher, &mut pos)?;
-            }
-        }
-    }
-    // A layout shorter than the size (lost allocation) is padded and reported.
-    if pos < size {
-        let missing = size - pos;
-        push_range(&mut unreadable, pos, missing);
-        buf.fill(0);
-        let mut left = missing;
-        while left > 0 {
-            let n = usize::try_from(left.min(CHUNK as u64)).unwrap_or(CHUNK);
-            put(buf.get(..n).unwrap_or_default(), &mut out, &mut hasher, &mut pos)?;
-            left -= n as u64;
-        }
-    }
+    rescyo_fs::content::stream(r, &e.entry.layout, e.entry.size, &mut sink).map_err(|e| match e {
+        rescyo_fs::content::ContentError::Guard(g) => CopyError::Guard(g),
+        rescyo_fs::content::ContentError::Sink(io) => CopyError::Io(io),
+    })?;
     out.flush()?;
     let _ = apply_times(&out, &e.entry.times);
     out.sync_all()?;

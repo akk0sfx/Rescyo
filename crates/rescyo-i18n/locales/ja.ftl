@@ -23,6 +23,8 @@ ls-total = { $count } 件
 
 recover-plan = ファイル { $files } 個、{ $size }、保存先：{ $target }
 recover-done = ファイル { $files } 個（{ $size }）を復旧しました。レポート：{ $report }
+recover-intact = { $count } 個のファイルを形式どおりに検証し、破損はありませんでした。
+recover-damaged = { $count } 個のファイルが形式どおりに読み取れません。レポートを確認してください。
 recover-partial = { $count } 個のファイルに、ゼロで埋めた読み取り不能部分があります。レポートを確認してください。
 recover-guessed = { $count } 個のファイルは割り当て情報がないため連続しているものとして読み取りました。使用前に確認してください。
 recover-resumed = { $count } 個のファイルは前回の実行で保存先にあり、検証済みです。
@@ -54,3 +56,34 @@ error-cancelled = 中止しました。ここまでに見つかった内容は�
 error-preflight = 何も書き込んでいません。先に次の問題を解決してください：
 
 hint-admin = ディスクの読み取りには、Windows では管理者権限、Linux と macOS では sudo が必要です。
+
+## Imaging
+image-start = { $source } のイメージを { $image } に作成しています（マップ：{ $map }）…
+phase-image-copy = コピー
+phase-image-trim = 不良領域のトリミング
+phase-image-scrape = 不良領域の再読み取り
+phase-image-retry = 不良セクタの再試行
+image-rescued = 救出済み
+image-bad-short = 不良
+image-done = イメージ完成：{ $size } のうち { $rescued } を救出しました。
+image-bad = { $count } 個の不良領域（{ $size }）を読み取れませんでした。イメージ内ではゼロになり、マップに記録されています。イメージをスキャンするときは --map を指定してください。
+error-image-exists = { $path } は既に存在し、マップがありません。Rescyo はイメージを上書きしません。別のファイル名を選ぶか、その --map を指定してください。
+error-map-invalid = マップ { $path } を読み取れません：{ $reason }
+error-map-mismatch = マップのディスクサイズは { $map } ですが、ソースは { $source } です。
+error-image-cancelled = 停止しました。マップは保存されています。同じコマンドを再実行すると続行します。
+hint-image-resume = マップは保存されています。ディスクを再接続し、同じコマンドを再実行すると続行します。
+
+## Partition search
+partitions-start = { $source } のブートセクタを検索しています…
+partitions-table = パーティションテーブル：{ $table }
+partitions-none = ボリュームは見つかりませんでした。
+partition-listed = #{ $number }（{ $offset }）：{ $fs }{ $label }、{ $size }、テーブルに記載あり（{ $boot }）
+partition-lost = 失われたパーティション（{ $offset }、バイト { $bytes }）：{ $fs }{ $label }、{ $size }、テーブルに記載なし（{ $boot }）
+partition-conflicting = ボリューム（{ $offset }、バイト { $bytes }）：{ $fs }{ $label }、{ $size }、テーブルの項目と重複（{ $boot }）
+partition-nested = 別のボリューム内のボリューム（{ $offset }）：{ $fs }{ $label }、{ $size }（{ $boot }）
+partition-empty = #{ $number }（{ $offset }、{ $size }）：先頭にボリュームが見つかりません
+partition-boot-both = ブートセクタとバックアップ
+partition-boot-primary = ブートセクタ
+partition-boot-backup = バックアップのブートセクタのみ
+partition-boot-none = ブートセクタなし
+partition-unpartitioned = パーティションテーブルなし：ディスク全体が 1 つのボリューム、{ $fs }{ $label }、{ $size }（{ $boot }）
