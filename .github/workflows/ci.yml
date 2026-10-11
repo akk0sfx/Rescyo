@@ -129,3 +129,5 @@ jobs:
         run: cargo xtask corpus
       - name: Tests with corpus
         run: cargo test --workspace --locked
+      - name: Gate 1 through the release binary
+        run: cargo xtask gate1

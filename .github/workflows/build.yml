@@ -1,0 +1,125 @@
+name: Build
+
+# Release binaries for every platform in the plan, plus the Windows 7 legacy line. Runs on
+# pushes to develop and main, on every pull request, and on demand.
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  NIGHTLY: nightly-2026-10-01
+
+jobs:
+  windows:
+    name: windows ${{ matrix.target }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
+    env:
+      RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release --locked -p rescyo-cli --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rescyo-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/rescyo.exe
+
+  windows7:
+    # Tier 3 targets: pinned nightly with build-std, static CRT. Built on every run so a
+    # toolchain or dependency change that breaks Windows 7 is caught at once. Running the
+    # binary on Windows 7 needs a self-hosted runner (Gate 3 checklist).
+    name: windows 7 ${{ matrix.target }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-win7-windows-msvc, i686-win7-windows-msvc]
+    env:
+      RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+      - run: rustup toolchain install $env:NIGHTLY --profile minimal --component rust-src
+      - run: cargo +$env:NIGHTLY build --release --locked -p rescyo-cli -Z build-std=std,panic_abort --target ${{ matrix.target }}
+      - name: No imports newer than Windows 7
+        shell: pwsh
+        run: |
+          # Fail if the binary imports API sets that Windows 7 does not have.
+          $exe = "target/${{ matrix.target }}/release/rescyo.exe"
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'Hostx64\\x64' } | Select-Object -First 1
+          $imports = & $dumpbin.FullName /imports $exe | Out-String
+          $bad = [regex]::Matches($imports, 'api-ms-win-core-synch-l1-2-0|api-ms-win-core-path|ProcessPrng|bcryptprimitives') | ForEach-Object { $_.Value } | Sort-Object -Unique
+          if ($bad) { Write-Error "Windows 8+ imports: $bad"; exit 1 }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rescyo-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/rescyo.exe
+
+  linux:
+    # Fully static musl binaries (runs on any live-USB) built with zig as the C toolchain for
+    # the bundled SQLite.
+    name: linux ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+          - i686-unknown-linux-musl
+          - armv7-unknown-linux-musleabihf
+          - riscv64gc-unknown-linux-musl
+          - loongarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: pip install --require-hashes --no-deps -r .github/zigbuild-requirements.txt
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo zigbuild --release --locked -p rescyo-cli --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rescyo-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/rescyo
+
+  macos:
+    name: macos universal
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+      - run: MACOSX_DEPLOYMENT_TARGET=10.12 cargo build --release --locked -p rescyo-cli --target x86_64-apple-darwin
+      - run: MACOSX_DEPLOYMENT_TARGET=11.0 cargo build --release --locked -p rescyo-cli --target aarch64-apple-darwin
+      - run: |
+          mkdir -p dist
+          lipo -create -output dist/rescyo target/x86_64-apple-darwin/release/rescyo target/aarch64-apple-darwin/release/rescyo
+          lipo -info dist/rescyo
+          dist/rescyo --version
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rescyo-macos-universal
+          path: dist/rescyo

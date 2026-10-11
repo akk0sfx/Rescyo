@@ -1,0 +1,3 @@
+# Pinned build helpers for Linux cross builds (pip --require-hashes).
+cargo-zigbuild==0.23.4 --hash=sha256:0a149a2a07b9513d422efa9cc23e1add9741f08abe86845fa418eaeb4cca7931
+ziglang==0.17.0 --hash=sha256:97079827064a7492cce5541ceb438ae8003ce1e54e399676da2d62fb7a5dc08b
