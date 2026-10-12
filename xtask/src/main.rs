@@ -5,6 +5,8 @@
 //!   reference tools (qemu-img, ewfacquire) inside their own container
 //! - `corrupt <scenario> <corruption> <out.img>`  write a damaged copy for manual inspection
 //! - `gate1`  Gate 1: every scenario and corruption through the shipping `rescyo` binary
+//! - `fonts`  fetch the Noto Sans SC/JP/KR language packs (pinned, hash-checked) into
+//!   `target/fonts` for the GUI and release packages
 #![forbid(unsafe_code)]
 
 use std::path::{Path, PathBuf};
@@ -13,6 +15,25 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 
 const IMAGE_TAG: &str = "rescyo-corpus:dev";
+/// google/fonts commit the CJK language packs come from (SIL OFL 1.1).
+const FONTS_COMMIT: &str = "bd8f81ddb5c74d5c8897b36ad88b440266245103";
+const CJK_FONTS: [(&str, &str, &str); 3] = [
+    (
+        "notosanssc",
+        "NotoSansSC[wght].ttf",
+        "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+    ),
+    (
+        "notosansjp",
+        "NotoSansJP[wght].ttf",
+        "c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f",
+    ),
+    (
+        "notosanskr",
+        "NotoSansKR[wght].ttf",
+        "194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252",
+    ),
+];
 const CONTAINERS_TAG: &str = "rescyo-containers:dev";
 
 fn main() -> Result<()> {
@@ -21,13 +42,14 @@ fn main() -> Result<()> {
         Some("corpus") => corpus(args.get(1..).unwrap_or_default()),
         Some("containers") => containers(args.get(1..).unwrap_or_default()),
         Some("gate1") => gate1(),
+        Some("fonts") => fonts(),
         Some("corrupt") => match args.get(1..) {
             Some([scenario, corruption, out]) => corrupt(scenario, corruption, Path::new(out)),
             _ => bail!("usage: cargo xtask corrupt <scenario> <corruption> <out.img>"),
         },
         _ => {
             eprintln!(
-                "usage: cargo xtask <corpus [scenario…] | containers [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1>"
+                "usage: cargo xtask <corpus [scenario…] | containers [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1 | fonts>"
             );
             std::process::exit(2);
         }
@@ -303,5 +325,59 @@ fn corrupt_into(s: &rescyo_testkit::Scenario, corruption: &str, out: &Path) -> R
         data.get_mut(a..b).context("damage range outside image")?.fill(0);
     }
     std::fs::write(out, data)?;
+    Ok(())
+}
+
+/// Downloads the CJK language packs with curl (present on every CI runner and on Windows 10+)
+/// and keeps them only if their SHA-256 matches the pinned value.
+fn fonts() -> Result<()> {
+    use sha2::{Digest, Sha256};
+    let dir = workspace_root().join("target/fonts");
+    std::fs::create_dir_all(&dir)?;
+    for (family, file, want) in CJK_FONTS {
+        let dest = dir.join(file);
+        let ok = |p: &Path| -> bool {
+            std::fs::read(p).is_ok_and(|b| {
+                Sha256::digest(&b)
+                    .iter()
+                    .map(|x| format!("{x:02x}"))
+                    .collect::<String>()
+                    == want
+            })
+        };
+        if ok(&dest) {
+            println!("{file}: present");
+            continue;
+        }
+        let url = format!(
+            "https://raw.githubusercontent.com/google/fonts/{FONTS_COMMIT}/ofl/{family}/{}",
+            file.replace('[', "%5B").replace(']', "%5D")
+        );
+        let tmp = dir.join(format!("{file}.part"));
+        let status = Command::new("curl")
+            .args(["-sSfL", "-o"])
+            .arg(&tmp)
+            .arg(&url)
+            .status()?;
+        if !status.success() {
+            bail!("downloading {file} failed");
+        }
+        if !ok(&tmp) {
+            let _ = std::fs::remove_file(&tmp);
+            bail!("{file}: checksum mismatch, refusing it");
+        }
+        std::fs::rename(&tmp, &dest)?;
+        println!("{file}: downloaded and verified");
+    }
+    let license = dir.join("NotoSans-OFL.txt");
+    if !license.exists() {
+        let url =
+            format!("https://raw.githubusercontent.com/google/fonts/{FONTS_COMMIT}/ofl/notosanssc/OFL.txt");
+        Command::new("curl")
+            .args(["-sSfL", "-o"])
+            .arg(&license)
+            .arg(&url)
+            .status()?;
+    }
     Ok(())
 }

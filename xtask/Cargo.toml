@@ -11,5 +11,6 @@ workspace = true
 
 [dependencies]
 anyhow = "1.0.104"
+sha2 = "0.11.0"
 rescyo-testkit = { workspace = true }
 serde_json = "1.0.153"
