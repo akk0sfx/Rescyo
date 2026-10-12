@@ -4,12 +4,22 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+  # ttf-parser is unmaintained (no known vulnerability). It reaches us only through winit's
+  # Wayland title-bar decorations (sctk-adwaita), which draw the window title with system fonts;
+  # Rescyo's own text goes through Slint's renderer. Revisit when winit drops it.
+  { id = "RUSTSEC-2026-0192", reason = "unmaintained, no vulnerability; only winit's Wayland decorations use it" },
+]
 
 [licenses]
 version = 2
 confidence-threshold = 0.9
 allow = [
   "GPL-3.0-or-later",
+  # Slint (the GUI toolkit) is offered as "GPL-3.0-only OR its royalty-free and commercial
+  # licences"; Rescyo takes the GPL-3.0 option (ADR-0006). That is compatible with
+  # GPL-3.0-or-later, and makes the GUI binary itself GPL-3.0.
+  "GPL-3.0-only",
   "MIT",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",

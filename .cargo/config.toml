@@ -1,2 +1,7 @@
 [alias]
 xtask = "run --quiet --package xtask --"
+
+[env]
+# Load fontconfig at run time (like X11 and Wayland), so building the GUI on Linux needs no
+# fontconfig headers and the binary runs on any distribution.
+RUST_FONTCONFIG_DLOPEN = "on"
