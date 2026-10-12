@@ -133,7 +133,9 @@ fn corrupt(scenario: &str, corruption: &str, out: &Path) -> Result<()> {
 /// Gate 1 (v0.1): with the real binary, scan each damaged image deeply and recover everything.
 /// Every live file must come back byte for byte, except files whose directory entry the damage
 /// destroyed and files Rescyo itself labelled a contiguous guess after every allocation table
-/// was lost. At least 95% of deleted contiguous files must come back.
+/// was lost. At least 95% of deleted contiguous files must come back on the Tier A file systems
+/// (ADR-0005); experimental ones must recover every live file, and their deleted files are only
+/// reported.
 fn gate1() -> Result<()> {
     let root = workspace_root().canonicalize()?;
     let status = Command::new("cargo")
@@ -210,13 +212,15 @@ fn gate1() -> Result<()> {
                 .filter_map(|f| Some((f.get("sha256")?.as_str()?, f.get("integrity")?.as_str()?)))
                 .collect();
             let root_lost = corruption.split('+').any(|c| c == "root");
+            // Tier B (ADR-0005): ext4 and later HFS+, APFS, Btrfs.
+            let experimental = s.expected.fs == "ext4";
             let mut verified = 0u32;
             let (mut live, mut exact, mut excused) = (0u32, 0u32, 0u32);
             let mut missing = Vec::new();
             for f in &s.expected.files {
                 let name = f.path.rsplit('/').next().unwrap_or(&f.path);
                 if f.state == rescyo_testkit::FileState::Deleted {
-                    if f.size > 0 && f.fragmented != Some(true) {
+                    if f.size > 0 && f.fragmented != Some(true) && !experimental {
                         del_total += 1;
                         del_ok += u64::from(shas.contains(f.sha256.as_str()));
                     }
@@ -243,8 +247,9 @@ fn gate1() -> Result<()> {
             let ok = missing.is_empty();
             failures += u32::from(!ok);
             rows.push(format!(
-                "| {} | {} | {exact}/{live} | {verified} | {excused} | {} |",
+                "| {}{} | {} | {exact}/{live} | {verified} | {excused} | {} |",
                 s.expected.scenario,
+                if experimental { " (experimental)" } else { "" },
                 corruption,
                 if ok {
                     "pass".to_owned()

@@ -1,0 +1,21 @@
+[package]
+name = "rescyo-carve"
+description = "File carving for Rescyo: files found by their own structure when no file system describes them."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rescyo-fs = { workspace = true }
+rescyo-io = { workspace = true }
+thiserror = "2.0.21"
+
+[dev-dependencies]
+rescyo-io = { workspace = true, features = ["testing"] }

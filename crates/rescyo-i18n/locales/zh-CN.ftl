@@ -91,3 +91,4 @@ partition-boot-primary = 引导扇区
 partition-boot-backup = 仅有备份引导扇区
 partition-boot-none = 无引导扇区
 partition-unpartitioned = 没有分区表：整个磁盘是一个卷，{ $fs }{ $label }，{ $size }（{ $boot }）
+scan-carved = 卷 { $id }：按签名找到 { $files } 个文件（按类型分文件夹存放；恢复时会检查内容）

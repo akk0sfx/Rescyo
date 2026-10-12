@@ -44,6 +44,9 @@ pub struct ScanOptions {
     /// Candidates below this score are recorded but not walked.
     pub min_score: u64,
     pub limits: Limits,
+    /// During a deep scan, also carve files by their signatures (into a separate `carved`
+    /// pseudo-volume, skipping files the file systems already describe).
+    pub carve: bool,
     pub hints: Hints,
 }
 
@@ -55,6 +58,7 @@ impl Default for ScanOptions {
             locale_codepage: None,
             min_score: 250,
             limits: Limits::default(),
+            carve: false,
             hints: Hints::default(),
         }
     }
@@ -170,12 +174,13 @@ impl From<GuardError> for ScanError {
 enum Cand {
     Fat(FatGeometry, Vec<Evidence>, u64),
     Ntfs(NtfsGeometry, Vec<Evidence>, u64),
+    Ext4(rescyo_ext4::Ext4Geometry, Vec<Evidence>, u64),
 }
 
 impl Cand {
     fn score(&self) -> u64 {
         match self {
-            Self::Fat(_, _, s) | Self::Ntfs(_, _, s) => *s,
+            Self::Fat(_, _, s) | Self::Ntfs(_, _, s) | Self::Ext4(_, _, s) => *s,
         }
     }
 
@@ -183,6 +188,7 @@ impl Cand {
         match self {
             Self::Fat(g, e, s) => g.to_candidate(e.clone(), *s),
             Self::Ntfs(g, e, s) => g.to_candidate(e.clone(), *s),
+            Self::Ext4(g, e, s) => g.to_candidate(e.clone(), *s),
         }
     }
 
@@ -191,6 +197,7 @@ impl Cand {
         match self {
             Self::Fat(g, _, _) => g.volume_offset.unwrap_or(g.data_offset)..g.data_end(),
             Self::Ntfs(g, _, _) => g.volume_offset..g.volume_offset + g.size,
+            Self::Ext4(g, _, _) => g.volume_offset..g.volume_offset + g.size(),
         }
     }
 
@@ -200,6 +207,7 @@ impl Cand {
                 a.data_offset == b.data_offset && a.cluster_size == b.cluster_size
             }
             (Self::Ntfs(a, _, _), Self::Ntfs(b, _, _)) => a.volume_offset == b.volume_offset,
+            (Self::Ext4(a, _, _), Self::Ext4(b, _, _)) => a.volume_offset == b.volume_offset,
             _ => false,
         }
     }
@@ -253,20 +261,29 @@ pub fn scan(
         for f in rescyo_ntfs::probe_boot(r, start, Some(end))? {
             cands.push(Cand::Ntfs(f.geometry, f.evidence, f.score));
         }
+        for f in rescyo_ext4::probe(r, start)? {
+            cands.push(Cand::Ext4(f.geometry, f.evidence, f.score));
+        }
     }
 
     // One sequential pass serves every deep scanner.
     let (mut fat_scan, mut ntfs_scan) = (None, None);
     let mut partitions = Vec::new();
+    let mut carver = None;
     if opts.mode == ScanMode::Deep {
         let mut fs = FatScanner::new(0..size);
         let mut ns = NtfsScanner::new(0..size);
         let mut boots = BootScanner::new();
+        let mut carving = opts.carve.then(rescyo_carve::Carver::new);
         read_through(r, 0..size, cancel, progress, |at, chunk| {
             fs.feed(at, chunk);
             ns.feed(at, chunk);
             boots.feed(at, chunk);
+            if let Some(c) = carving.as_mut() {
+                c.feed(at, chunk);
+            }
         })?;
+        carver = carving;
         // Volumes found by their boot sectors (lost partitions included) are probed like
         // table entries, so they carry boot-sector evidence.
         partitions = boots.finish(r, &table)?;
@@ -276,6 +293,9 @@ pub fn scan(
             }
             for f in rescyo_ntfs::probe_boot(r, p.offset, Some(p.offset + p.size))? {
                 cands.push(Cand::Ntfs(f.geometry, f.evidence, f.score));
+            }
+            for f in rescyo_ext4::probe(r, p.offset)? {
+                cands.push(Cand::Ext4(f.geometry, f.evidence, f.score));
             }
         }
         session.journal(
@@ -329,9 +349,9 @@ pub fn scan(
     for c in cands {
         if let Some(m) = merged.iter_mut().find(|m| m.same(&c)) {
             let extra: Vec<Evidence> = match &c {
-                Cand::Fat(_, e, _) | Cand::Ntfs(_, e, _) => e.clone(),
+                Cand::Fat(_, e, _) | Cand::Ntfs(_, e, _) | Cand::Ext4(_, e, _) => e.clone(),
             };
-            let (Cand::Fat(_, ev, _) | Cand::Ntfs(_, ev, _)) = m;
+            let (Cand::Fat(_, ev, _) | Cand::Ntfs(_, ev, _) | Cand::Ext4(_, ev, _)) = m;
             for e in extra {
                 if !ev.contains(&e) {
                     ev.push(e);
@@ -387,6 +407,9 @@ pub fn scan(
         }
         report.volumes.push(summary);
     }
+    if let Some(c) = carver {
+        report.volumes.extend(carve(r, session, c, cancel)?);
+    }
     let bad = r.bad_map();
     report.unreadable_sectors = bad.bad_sectors();
     session.save_bad_map(&bad)?;
@@ -395,6 +418,61 @@ pub fn scan(
         &serde_json::to_value(&report).unwrap_or_default(),
     )?;
     Ok(report)
+}
+
+/// Carves files outside what the walked volumes describe into a `carved` pseudo-volume.
+fn carve(
+    r: &GuardedReader,
+    session: &mut Session,
+    carver: rescyo_carve::Carver,
+    cancel: &CancelToken,
+) -> Result<Option<VolumeSummary>, ScanError> {
+    let known: std::collections::HashSet<u64> = session
+        .entries(|e| e.entry.kind == rescyo_fs::EntryKind::File)?
+        .iter()
+        .filter_map(|e| match e.entry.layout.extents.first() {
+            Some(rescyo_fs::Extent::Disk { offset, .. }) => Some(*offset),
+            _ => None,
+        })
+        .collect();
+    let files = carver.finish(r, &known, cancel).map_err(|e| match e {
+        rescyo_carve::CarveError::Read(g) => ScanError::from(g),
+        rescyo_carve::CarveError::Cancelled => ScanError::Cancelled,
+        other => ScanError::Engine(other.to_string()),
+    })?;
+    if files.is_empty() {
+        return Ok(None);
+    }
+    let candidate = VolumeCandidate {
+        fs: FsKind::Carved,
+        offset: None,
+        cluster_size: 512,
+        data_offset: 0,
+        size: None,
+        label: None,
+        evidence: Vec::new(),
+        score: 0,
+        params: serde_json::Value::Null,
+    };
+    let id = session.add_volume(&candidate)?;
+    let mut sink = session.sink(id)?;
+    let stats = rescyo_carve::emit(&files, &mut sink).map_err(|e| ScanError::Engine(e.to_string()))?;
+    sink.finish()?;
+    session.mark_walked(id)?;
+    session.journal("carved", &serde_json::to_value(&stats).unwrap_or_default())?;
+    Ok(Some(VolumeSummary {
+        id,
+        fs: FsKind::Carved,
+        offset: None,
+        cluster_size: 512,
+        data_offset: 0,
+        score: 0,
+        walked: true,
+        files: files.len() as u64,
+        dirs: stats.len() as u64,
+        deleted: files.len() as u64,
+        lost_folders: 0,
+    }))
 }
 
 #[allow(
@@ -441,6 +519,14 @@ fn walk_one(
                 })?;
             (summary.files, summary.dirs, summary.deleted, summary.lost_folders) =
                 (st.files, st.dirs, st.deleted, st.lost_folders);
+        }
+        Cand::Ext4(g, _, _) => {
+            let st = rescyo_ext4::walk(r, g, &opts.limits, &mut sink, cancel).map_err(|e| match e {
+                rescyo_ext4::WalkError::Read(g) => ScanError::from(g),
+                rescyo_ext4::WalkError::Cancelled => ScanError::Cancelled,
+                other => ScanError::Engine(other.to_string()),
+            })?;
+            (summary.files, summary.dirs, summary.deleted) = (st.files, st.dirs, st.deleted);
         }
     }
     sink.finish()?;
