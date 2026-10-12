@@ -405,7 +405,47 @@ impl Controller {
         }
     }
 
-    fn ask(&self, what: Ask, current: String) {
+    /// Asks for a path: the system's own dialog where there is one, the path sheet otherwise
+    /// (a live-USB without a desktop portal, or a remote session without one).
+    fn ask(self: &Rc<Self>, what: Ask, current: String) {
+        if std::env::var_os("RESCYO_PATH_SHEET").is_none() && native_dialogs() {
+            let start = PathBuf::from(&current);
+            let dir = if start.is_dir() {
+                Some(start.clone())
+            } else {
+                start.parent().map(Path::to_path_buf)
+            };
+            let mut d = rfd::FileDialog::new().set_title(self.t(sheet_title(what), &[]));
+            if let Some(dir) = dir.filter(|d| d.is_dir()) {
+                d = d.set_directory(dir);
+            }
+            let picked = match what {
+                Ask::Target => d.pick_folder(),
+                Ask::OpenImage => d
+                    .add_filter(
+                        "Disk images",
+                        &[
+                            "img", "dd", "raw", "bin", "iso", "vhd", "vhdx", "vmdk", "qcow2", "e01", "s01",
+                        ],
+                    )
+                    .add_filter("*", &["*"])
+                    .pick_file(),
+                Ask::OpenSession => d.add_filter("Rescyo session", &["rescyo", "db"]).pick_file(),
+                Ask::SessionFile | Ask::ImageOut => d
+                    .set_file_name(
+                        start
+                            .file_name()
+                            .map(|n| n.to_string_lossy().into_owned())
+                            .unwrap_or_default(),
+                    )
+                    .save_file(),
+            };
+            if let Some(p) = picked {
+                self.st.borrow_mut().ask = Some(what);
+                self.accept_path(&p.display().to_string());
+            }
+            return;
+        }
         let Some(ui) = self.ui() else { return };
         let (h, hint) = match what {
             Ask::Target => ("gui-sheet-target", "gui-sheet-target-hint"),
@@ -424,8 +464,14 @@ impl Controller {
     fn sheet_ok(self: &Rc<Self>) {
         let Some(ui) = self.ui() else { return };
         let text = ui.get_sheet_text().trim().to_owned();
-        let what = self.st.borrow_mut().ask.take();
         ui.set_sheet_visible(false);
+        self.accept_path(&text);
+    }
+
+    fn accept_path(self: &Rc<Self>, text: &str) {
+        let Some(ui) = self.ui() else { return };
+        let what = self.st.borrow_mut().ask.take();
+        let text = text.to_owned();
         if text.is_empty() {
             return;
         }
@@ -1017,6 +1063,25 @@ impl Controller {
 thread_local! {
     /// The controller of the window, for callbacks posted back from worker threads.
     pub static CONTROLLER: RefCell<Option<Rc<Controller>>> = const { RefCell::new(None) };
+}
+
+/// Whether the system can show its own file dialogs (a desktop session on Linux).
+fn native_dialogs() -> bool {
+    if cfg!(any(windows, target_os = "macos")) {
+        return true;
+    }
+    std::env::var_os("WAYLAND_DISPLAY").is_some()
+        || std::env::var_os("DISPLAY").is_some() && std::env::var_os("XDG_CURRENT_DESKTOP").is_some()
+}
+
+fn sheet_title(what: Ask) -> &'static str {
+    match what {
+        Ask::Target => "gui-sheet-target",
+        Ask::OpenImage => "gui-sheet-image",
+        Ask::OpenSession => "gui-sheet-session",
+        Ask::SessionFile => "gui-sheet-session-file",
+        Ask::ImageOut => "gui-sheet-image-out",
+    }
 }
 
 fn step_id(step: i32) -> &'static str {
