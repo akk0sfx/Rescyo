@@ -4,12 +4,23 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-12
+
+Third alpha: open the disk images people actually have, find files by their structure when nothing else describes them, read ext4, and work in a terminal.
+
 ### Added
 
 - **Terminal interface**: `rescyo tui SESSION` browses a session (folder tree, files with their assembly and integrity, inspector) and recovers marked files or whole folders through the same preflight; `rescyo tui SOURCE --session NEW [--deep] [--carve]` scans with a live sector strip first. Same flow and design tokens as the coming GUI, 24-bit or 256 colours, `NO_COLOR` respected, five languages; works over SSH and on live-USB consoles.
 - **Virtual-disk containers as sources**: VHD (fixed, dynamic, differencing), VHDX (dynamic, fixed, differencing; an unreplayed log is replayed in memory only), VMDK (sparse, stream-optimized, flat and split descriptors, delta disks), qcow2 v2/v3 (compressed clusters, backing files) and EnCase/SMART E01/S01 evidence sets (all segments, Adler-32 and table mirrors) open directly, detected by signature or chosen with `--format`. Damage inside a container (a table entry outside its file, a chunk that fails its checksum or does not decompress) makes only that range unreadable; header copies, redundant grain directories and table mirrors are used when the primary is damaged. `rescyo image` converts any of them to a raw image. Checked against files written by qemu-img and ewfacquire (`cargo xtask containers`).
 - **File carving**: `scan --deep --carve` finds JPEG, PNG, GIF, PDF, ZIP-based documents (docx, xlsx, pptx, odt, epub…), MP4/MOV/HEIF, WAV/AVI/WEBP and BMP files by their own structure where no file system describes them, follows each to its real end (never a guessed length), and keeps them in a separate `carved` volume, one folder per type; recovery verifies their content like any other file.
 - **ext2/ext3/ext4 (experimental)**: intact volumes with extent trees, block maps, inline data and hashed directories; a backup superblock when the primary is gone; lost ext4 partitions found by their superblocks. Deleted names are read from directory slack where the kernel left them (Linux 5.13 and later wipes them, and zeroes a deleted inode's extents; carving recovers such files).
+
+### Known limitations
+
+- Still no signed binaries: build from source or take CI artifacts until code signing is in place.
+- ext4 is experimental: on volumes written by Linux 5.13 or later, deleted names and extents are wiped, so deleted files come back only by carving.
+- DMG images, HFS+, APFS, Btrfs and the desktop interface arrive in v0.4.
+- Translations other than English and Russian await native review.
 
 ## [0.2.0] — 2026-10-12
 
@@ -59,5 +70,6 @@ First alpha: a command-line tool that recovers whole folder trees from FAT12/16/
 - NTFS compressed and encrypted files, alternate data streams, ext4/HFS+/APFS/Btrfs, imaging, carving and the GUI arrive in later versions (see the roadmap).
 - Translations other than English and Russian await native review.
 
+[0.3.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.3.0
 [0.2.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.2.0
 [0.1.0]: https://github.com/akk0sfx/Rescyo/releases/tag/v0.1.0
