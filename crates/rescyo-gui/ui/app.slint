@@ -4,7 +4,7 @@
 
 import { ListView } from "std-widgets.slint";
 import { Tokens } from "tokens.slint";
-import { Look, Fact, Chip, Integrity, Eyebrow, SectorStrip, Button, SourceIcon } from "components.slint";
+import { Look, Fact, Chip, Integrity, IntegrityGlyph, Eyebrow, SectorStrip, Button, SourceIcon } from "components.slint";
 import "../../../assets/fonts/Onest[wght].ttf";
 import "../../../assets/fonts/Unbounded[wght].ttf";
 import "../../../assets/fonts/JetBrainsMono[wght].ttf";
@@ -59,6 +59,18 @@ export global L {
     in property <string> recover-button: "Recover";
     in property <string> image-first: "Image the disk first";
     in property <string> empty: "No files here.";
+    in property <string> empty-title: "Bring it back.";
+    in property <string> empty-hint: "Choose a disk, an image or a session on the left.";
+    in property <string> open-image: "Open image…";
+    in property <string> open-session: "Open session…";
+    in property <string> deep: "Deep scan: read the whole disk for lost volumes and folders";
+    in property <string> carve: "Also find files by their signatures";
+    in property <string> session-file: "Session file";
+    in property <string> change: "Change…";
+    in property <string> scan: "Scan";
+    in property <string> stop: "Stop";
+    in property <string> ok: "OK";
+    in property <string> cancel: "Cancel";
 }
 
 component SidebarRow inherits Rectangle {
@@ -102,6 +114,8 @@ component SidebarRow inherits Rectangle {
 
 component Sidebar inherits Rectangle {
     in property <[SourceItem]> items;
+    // Whether each group (sources, images, sessions) has entries; empty groups are not shown.
+    in property <[bool]> groups: [true, true, true];
     in-out property <int> current;
     callback picked(int);
     width: 236px;
@@ -116,7 +130,7 @@ component Sidebar inherits Rectangle {
         alignment: start;
         for g in [0, 1, 2]: VerticalLayout {
             spacing: 2px;
-            if items.length > 0: Eyebrow {
+            if groups[g]: Eyebrow {
                 label: (g == 0 ? L.sources : g == 1 ? L.images : L.sessions);
                 height: 22px;
                 x: 8px;
@@ -345,18 +359,247 @@ component Inspector inherits Rectangle {
     }
 }
 
+export struct Count {
+    state: int,     // integrity state, -1 for a plain line
+    label: string,
+    value: string,
+}
+
+export component Toggle inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    height: 22px;
+    opacity: enabled ? 1 : 0.45;
+    accessible-role: checkbox;
+    accessible-checked: checked;
+    accessible-label: text;
+    HorizontalLayout {
+        spacing: 10px;
+        Rectangle {
+            width: 34px; height: 20px; border-radius: 10px;
+            background: checked ? Tokens.rescue : Tokens.ink-3;
+            Rectangle {
+                x: checked ? parent.width - 18px : 2px;
+                y: 2px; width: 16px; height: 16px; border-radius: 8px; background: #ffffff;
+                animate x { duration: 120ms; easing: ease-out; }
+            }
+        }
+        Text { text: root.text; color: Tokens.text; font-size: 13px; vertical-alignment: center; }
+    }
+    TouchArea { clicked => { if enabled { checked = !checked; } } }
+}
+
+component SourcePane inherits Rectangle {
+    in property <string> heading;
+    in property <[Fact]> facts;
+    in property <string> warning;
+    in property <string> session-path;
+    in-out property <bool> deep;
+    in-out property <bool> carve;
+    in property <bool> can-image;
+    callback scan();
+    callback image-first();
+    callback choose-session();
+    VerticalLayout {
+        padding: 32px;
+        spacing: 18px;
+        alignment: start;
+        Eyebrow { label: "01 " + L.steps[0]; on: true; }
+        Text { text: heading; color: Tokens.text; font-family: Tokens.font-display; font-weight: 700; font-size: 32px; }
+        HorizontalLayout {
+            spacing: 18px;
+            alignment: start;
+            for f in facts: VerticalLayout {
+                spacing: 2px;
+                Eyebrow { label: f.label; font-size: 10px; }
+                Text { text: f.value; color: Tokens.text; font-family: Tokens.font-data; font-size: 13px; }
+            }
+        }
+        if warning != "": Rectangle {
+            border-radius: Tokens.radius-panel;
+            background: Tokens.warn.with-alpha(0.10);
+            border-width: 1px;
+            border-color: Tokens.warn.with-alpha(0.45);
+            height: wt.preferred-height + 24px;
+            wt := Text {
+                x: 14px; width: parent.width - 28px;
+                text: warning; color: Tokens.text; font-size: 13px; wrap: word-wrap;
+            }
+        }
+        Rectangle {
+            border-radius: Tokens.radius-panel;
+            background: Tokens.ink-2;
+            height: opts.preferred-height;
+            opts := VerticalLayout {
+                padding: 16px;
+                spacing: 12px;
+                Toggle { text: L.deep; checked <=> root.deep; }
+                Toggle { text: L.carve; checked <=> root.carve; enabled: root.deep; }
+                HorizontalLayout {
+                    spacing: 10px;
+                    Text { text: L.session-file; color: Tokens.text-2; font-size: 12.5px; vertical-alignment: center; }
+                    Text { text: session-path; color: Tokens.text; font-family: Tokens.font-data; font-size: 12px; overflow: elide; vertical-alignment: center; horizontal-stretch: 1; }
+                    Button { text: L.change; clicked => { choose-session(); } }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            if can-image: Button { text: L.image-first; clicked => { image-first(); } }
+            Button { text: L.scan; primary: true; clicked => { scan(); } }
+        }
+    }
+}
+
+component ProgressPane inherits Rectangle {
+    in property <string> eyebrow;
+    in property <string> heading;
+    in property <string> phase;
+    in property <string> detail;
+    in property <float> fraction;
+    in property <[int]> strip;
+    in property <float> head: -1;
+    in property <bool> done;
+    in property <[Count]> summary;
+    in property <string> primary-label;
+    callback stop();
+    callback primary();
+    VerticalLayout {
+        padding: 32px;
+        spacing: 16px;
+        alignment: start;
+        Eyebrow { label: eyebrow; on: true; }
+        Text { text: heading; color: Tokens.text; font-family: Tokens.font-display; font-weight: 700; font-size: 32px; }
+        if strip.length > 0: SectorStrip { cells: strip; head: head; height: 16px; }
+        if strip.length == 0: Rectangle {
+            height: 8px; border-radius: 4px; background: Tokens.ink-3; clip: true;
+            Rectangle { x: 0; width: parent.width * clamp(fraction, 0, 1); background: Tokens.rescue; }
+        }
+        Text { text: phase; color: Tokens.text; font-size: 15px; }
+        Text { text: detail; color: Tokens.text-2; font-family: Tokens.font-data; font-size: 12px; }
+        for c in summary: HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            if c.state >= 0: VerticalLayout { alignment: center; IntegrityGlyph { state: c.state; } }
+            Text { text: c.label; color: Tokens.text-2; font-size: 13px; min-width: 220px; }
+            Text { text: c.value; color: Tokens.text; font-family: Tokens.font-data; font-size: 13px; }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            if !done: Button { text: L.stop; clicked => { stop(); } }
+            if done && primary-label != "": Button { text: primary-label; primary: true; clicked => { primary(); } }
+        }
+    }
+}
+
+component EmptyPane inherits Rectangle {
+    VerticalLayout {
+        alignment: center;
+        spacing: 14px;
+        padding: 48px;
+        Image { source: @image-url("../../../assets/brand/logo.svg"); height: 96px; image-fit: contain; }
+        Text {
+            text: L.empty-title;
+            horizontal-alignment: center;
+            color: Tokens.text;
+            font-family: Tokens.font-display;
+            font-weight: 800;
+            font-size: 48px;
+            letter-spacing: -1.5px;
+        }
+        Text { text: L.empty-hint; horizontal-alignment: center; color: Tokens.text-2; font-size: 15px; wrap: word-wrap; }
+    }
+}
+
+component Sheet inherits Rectangle {
+    in property <string> heading;
+    in property <string> hint;
+    in-out property <string> text;
+    callback ok();
+    callback cancel();
+    background: #00000080;
+    TouchArea {}
+    Rectangle {
+        width: 560px;
+        height: col.preferred-height;
+        border-radius: Tokens.radius-window;
+        background: Tokens.ink-2;
+        border-width: 1px;
+        border-color: Tokens.line;
+        drop-shadow-blur: 40px;
+        drop-shadow-color: #00000066;
+        col := VerticalLayout {
+            padding: 22px;
+            spacing: 14px;
+            Text { text: heading; color: Tokens.text; font-weight: 600; font-size: 15px; }
+            Rectangle {
+                height: 34px;
+                border-radius: Tokens.radius-control;
+                background: Tokens.ink-1;
+                border-width: 1px;
+                border-color: input.has-focus ? Tokens.rescue : Tokens.line;
+                input := TextInput {
+                    x: 12px; width: parent.width - 24px;
+                    text <=> root.text;
+                    color: Tokens.text;
+                    font-family: Tokens.font-data;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    accepted => { ok(); }
+                }
+            }
+            Text { text: hint; color: Tokens.text-3; font-size: 12px; wrap: word-wrap; }
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: end;
+                Button { text: L.cancel; clicked => { cancel(); } }
+                Button { text: L.ok; primary: true; clicked => { ok(); } }
+            }
+        }
+    }
+    init => { input.focus(); }
+}
+
 export component MainWindow inherits Window {
     title: "Rescyo";
     preferred-width: 1360px;
     preferred-height: 820px;
     min-width: 1120px;
-    min-height: 560px;
+    min-height: 600px;
     background: Look.glass ? transparent : Tokens.ink-1;
     default-font-family: Tokens.font-text;
 
+    // Which screen the main area shows: -1 nothing chosen, 0 source, 1 scan, 2 browse, 3 recover.
+    in property <int> step: -1;
+    in property <bool> has-session;
+
     in property <[SourceItem]> sources;
-    in-out property <int> source-index;
-    in property <int> step: 2;
+    in property <[bool]> source-groups: [false, false, false];
+    in-out property <int> source-index: -1;
+
+    // Source
+    in property <string> source-heading;
+    in property <[Fact]> source-facts;
+    in property <string> source-warning;
+    in property <string> session-path;
+    in-out property <bool> deep: true;
+    in-out property <bool> carve;
+    in property <bool> can-image;
+
+    // Scan and recovery progress
+    in property <string> progress-eyebrow;
+    in property <string> progress-heading;
+    in property <string> progress-phase;
+    in property <string> progress-detail;
+    in property <float> progress-fraction;
+    in property <bool> progress-done;
+    in property <[Count]> progress-summary;
+    in property <string> progress-primary;
+
+    // Browse
     in property <string> heading;
     in property <[Fact]> facts;
     in property <[int]> strip;
@@ -378,8 +621,21 @@ export component MainWindow inherits Window {
     in property <string> search-placeholder;
     in-out property <string> query;
 
+    // Path sheet
+    in property <bool> sheet-visible;
+    in property <string> sheet-heading;
+    in property <string> sheet-hint;
+    in-out property <string> sheet-text;
+
     callback source-picked(int);
     callback step-picked(int);
+    callback open-image();
+    callback open-session();
+    callback scan();
+    callback image-first();
+    callback choose-session();
+    callback stop();
+    callback progress-primary-clicked();
     callback tree-picked(int);
     callback tree-toggled(int);
     callback file-picked(int);
@@ -387,12 +643,37 @@ export component MainWindow inherits Window {
     callback search-edited(string);
     callback choose-target();
     callback recover();
+    callback sheet-ok();
+    callback sheet-cancel();
 
     HorizontalLayout {
-        Sidebar {
-            items: sources;
-            current <=> source-index;
-            picked(i) => { source-picked(i); }
+        VerticalLayout {
+            Sidebar {
+                vertical-stretch: 1;
+                items: sources;
+                groups: source-groups;
+                current <=> source-index;
+                picked(i) => { source-picked(i); }
+            }
+            Rectangle {
+                width: 236px;
+                height: foot.preferred-height;
+                background: Look.glass ? transparent : Tokens.dark ? Tokens.ink-0 : Tokens.ink-0.mix(#D7E2F5, 0.88);
+                Rectangle { x: parent.width - 1px; width: 1px; background: Tokens.line; }
+                foot := VerticalLayout {
+                    padding: 12px;
+                    spacing: 6px;
+                    for a[i] in [L.open-image, L.open-session]: Rectangle {
+                        height: 30px;
+                        border-radius: Tokens.radius-control;
+                        background: ta.has-hover ? Tokens.ink-3 : transparent;
+                        accessible-role: button;
+                        accessible-label: a;
+                        Text { x: 10px; text: "+  " + a; color: Tokens.text-2; font-size: 12.5px; }
+                        ta := TouchArea { clicked => { if i == 0 { open-image(); } else { open-session(); } } }
+                    }
+                }
+            }
         }
         Rectangle {
             background: Tokens.ink-1;
@@ -411,13 +692,13 @@ export component MainWindow inherits Window {
                             on: step;
                             picked(i) => { step-picked(i); }
                         } }
-                        VerticalLayout { alignment: center; Rectangle {
+                        if step == 2: VerticalLayout { alignment: center; Rectangle {
                             width: 260px;
                             height: 30px;
                             border-radius: Look.pill;
                             background: Tokens.ink-2;
                             border-width: 1px;
-                            border-color: Tokens.line;
+                            border-color: search.has-focus ? Tokens.rescue : Tokens.line;
                             search := TextInput {
                                 x: 12px;
                                 width: parent.width - 24px;
@@ -438,123 +719,153 @@ export component MainWindow inherits Window {
                         } }
                     }
                 }
-                // Header: title, facts, sector strip, note.
-                Rectangle {
-                    height: hv.preferred-height;
-                    Rectangle { y: parent.height - 1px; height: 1px; background: Tokens.line; }
-                    hv := VerticalLayout {
-                        padding-left: 18px; padding-right: 18px; padding-top: 16px; padding-bottom: 14px;
-                        spacing: 10px;
-                        HorizontalLayout {
-                            spacing: 14px;
-                            alignment: start;
-                            Text {
-                                text: heading;
-                                color: Tokens.text;
-                                font-family: Tokens.font-display;
-                                font-weight: 700;
-                                font-size: 20px;
-                                letter-spacing: -0.2px;
-                                vertical-alignment: bottom;
-                            }
-                            for f in facts: HorizontalLayout {
-                                spacing: 4px;
-                                Text { text: f.label; color: Tokens.text-2; font-family: Tokens.font-data; font-size: 11px; vertical-alignment: bottom; }
-                                Text { text: f.value; color: Tokens.text; font-family: Tokens.font-data; font-size: 11px; font-weight: 500; vertical-alignment: bottom; }
-                            }
-                        }
-                        SectorStrip { cells: strip; head: head; }
-                        if note != "": HorizontalLayout {
-                            spacing: 10px;
-                            VerticalLayout { alignment: center; Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: Tokens.info; } }
-                            Text {
-                                text: note-title;
-                                color: Tokens.text;
-                                font-weight: 600;
-                                font-size: 12.5px;
-                            }
-                            Text {
-                                text: note;
-                                color: Tokens.text-2;
-                                font-size: 12.5px;
-                                overflow: elide;
-                                horizontal-stretch: 1;
-                            }
-                        }
-                    }
-                }
-                // Body: tree, files, inspector.
-                HorizontalLayout {
+                if step == -1: EmptyPane { vertical-stretch: 1; }
+                if step == 0: SourcePane {
                     vertical-stretch: 1;
-                    TreeView {
-                        rows: tree;
-                        current <=> tree-index;
-                        picked(i) => { tree-picked(i); }
-                        toggled(i) => { tree-toggled(i); }
-                    }
-                    FileTable {
-                        horizontal-stretch: 1;
-                        rows: files;
-                        current <=> file-index;
-                        picked(i) => { file-picked(i); }
-                        marked(i) => { file-marked(i); }
-                    }
-                    Inspector {
-                        name: inspector-name;
-                        facts: inspector;
-                        preview: preview;
-                        has-preview: has-preview;
-                    }
+                    heading: source-heading;
+                    facts: source-facts;
+                    warning: source-warning;
+                    session-path: session-path;
+                    deep <=> root.deep;
+                    carve <=> root.carve;
+                    can-image: can-image;
+                    scan => { root.scan(); }
+                    image-first => { root.image-first(); }
+                    choose-session => { root.choose-session(); }
                 }
-                // Safety bar: target, preflight, the one primary action.
-                Rectangle {
-                    height: 58px;
-                    background: Look.glass ? Tokens.ink-0.with-alpha(0.85) : Tokens.ink-0;
-                    Rectangle { height: 1px; y: 0; background: Tokens.line; }
+                if step == 1 || step == 3: ProgressPane {
+                    vertical-stretch: 1;
+                    eyebrow: progress-eyebrow;
+                    heading: progress-heading;
+                    phase: progress-phase;
+                    detail: progress-detail;
+                    fraction: progress-fraction;
+                    strip: step == 1 ? root.strip : [];
+                    head: root.head;
+                    done: progress-done;
+                    summary: progress-summary;
+                    primary-label: progress-primary;
+                    stop => { root.stop(); }
+                    primary => { root.progress-primary-clicked(); }
+                }
+                if step == 2: VerticalLayout {
+                    vertical-stretch: 1;
+                    // Header: title, facts, sector strip, note.
+                    Rectangle {
+                        height: hv.preferred-height;
+                        Rectangle { y: parent.height - 1px; height: 1px; background: Tokens.line; }
+                        hv := VerticalLayout {
+                            padding-left: 18px; padding-right: 18px; padding-top: 16px; padding-bottom: 14px;
+                            spacing: 10px;
+                            HorizontalLayout {
+                                spacing: 14px;
+                                alignment: start;
+                                Text {
+                                    text: heading;
+                                    color: Tokens.text;
+                                    font-family: Tokens.font-display;
+                                    font-weight: 700;
+                                    font-size: 20px;
+                                    letter-spacing: -0.2px;
+                                    vertical-alignment: bottom;
+                                }
+                                for f in facts: HorizontalLayout {
+                                    spacing: 4px;
+                                    Text { text: f.label; color: Tokens.text-2; font-family: Tokens.font-data; font-size: 11px; vertical-alignment: bottom; }
+                                    Text { text: f.value; color: Tokens.text; font-family: Tokens.font-data; font-size: 11px; font-weight: 500; vertical-alignment: bottom; }
+                                }
+                            }
+                            SectorStrip { cells: strip; head: head; }
+                            if note != "": HorizontalLayout {
+                                spacing: 10px;
+                                VerticalLayout { alignment: center; Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: Tokens.info; } }
+                                Text { text: note-title; color: Tokens.text; font-weight: 600; font-size: 12.5px; }
+                                Text { text: note; color: Tokens.text-2; font-size: 12.5px; overflow: elide; horizontal-stretch: 1; }
+                            }
+                        }
+                    }
+                    // Body: tree, files, inspector.
                     HorizontalLayout {
-                        padding-left: 16px; padding-right: 16px;
-                        spacing: 18px;
-                        VerticalLayout {
-                            alignment: center;
-                            spacing: 2px;
-                            Eyebrow { label: "04 " + L.recover-to; font-size: 10px; }
-                            Text {
-                                text: target == "" ? L.no-target : target;
-                                color: target == "" ? Tokens.text-3 : Tokens.text;
-                                font-weight: 600;
-                                font-size: 13px;
-                                overflow: elide;
-                            }
-                            TouchArea { clicked => { choose-target(); } }
+                        vertical-stretch: 1;
+                        TreeView {
+                            rows: tree;
+                            current <=> tree-index;
+                            picked(i) => { tree-picked(i); }
+                            toggled(i) => { tree-toggled(i); }
                         }
-                        HorizontalLayout {
-                            spacing: 8px;
-                            alignment: start;
+                        FileTable {
                             horizontal-stretch: 1;
-                            if preflight != "": Text {
-                                text: preflight-ok ? "✓" : "✕";
-                                color: preflight-ok ? Tokens.ok : Tokens.bad;
-                                font-size: 12.5px;
-                                vertical-alignment: center;
-                            }
-                            Text {
-                                text: preflight;
-                                color: Tokens.text-2;
-                                font-size: 12.5px;
-                                vertical-alignment: center;
-                                overflow: elide;
-                            }
+                            rows: files;
+                            current <=> file-index;
+                            picked(i) => { file-picked(i); }
+                            marked(i) => { file-marked(i); }
                         }
-                        VerticalLayout { alignment: center; Button {
-                            text: L.recover-button;
-                            primary: true;
-                            enabled: preflight-ok && recover-count > 0;
-                            clicked => { recover(); }
-                        } }
+                        Inspector {
+                            name: inspector-name;
+                            facts: inspector;
+                            preview: preview;
+                            has-preview: has-preview;
+                        }
+                    }
+                    // Safety bar: target, preflight, the one primary action.
+                    Rectangle {
+                        height: 58px;
+                        background: Look.glass ? Tokens.ink-0.with-alpha(0.85) : Tokens.ink-0;
+                        Rectangle { height: 1px; y: 0; background: Tokens.line; }
+                        HorizontalLayout {
+                            padding-left: 16px; padding-right: 16px;
+                            spacing: 18px;
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 2px;
+                                Eyebrow { label: "04 " + L.recover-to; font-size: 10px; }
+                                Text {
+                                    text: target == "" ? L.no-target : target;
+                                    color: target == "" ? Tokens.text-3 : Tokens.text;
+                                    font-weight: 600;
+                                    font-size: 13px;
+                                    overflow: elide;
+                                }
+                                TouchArea { clicked => { choose-target(); } mouse-cursor: pointer; }
+                            }
+                            HorizontalLayout {
+                                spacing: 8px;
+                                alignment: start;
+                                horizontal-stretch: 1;
+                                if preflight != "": Text {
+                                    text: preflight-ok ? "✓" : "✕";
+                                    color: preflight-ok ? Tokens.ok : Tokens.bad;
+                                    font-size: 12.5px;
+                                    vertical-alignment: center;
+                                }
+                                Text {
+                                    text: preflight;
+                                    color: Tokens.text-2;
+                                    font-size: 12.5px;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+                            }
+                            VerticalLayout { alignment: center; Button {
+                                text: L.recover-button;
+                                primary: true;
+                                enabled: preflight-ok && recover-count > 0;
+                                clicked => { recover(); }
+                            } }
+                        }
                     }
                 }
             }
         }
+    }
+    if sheet-visible: Sheet {
+        width: root.width;
+        height: root.height;
+        heading: sheet-heading;
+        hint: sheet-hint;
+        text <=> sheet-text;
+        ok => { sheet-ok(); }
+        cancel => { sheet-cancel(); }
     }
 }
 

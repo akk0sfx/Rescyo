@@ -139,3 +139,56 @@ tui-help =
     s               命名流        t         选择目标文件夹
     r               恢复          q 或 Esc  退出
 tui-keys =  Tab 切换面板 · 空格 标记 · / 搜索 · d 已删除 · t 目标 · r 恢复 · ? 帮助 · q 退出
+
+## Desktop interface
+gui-sources = 来源
+gui-images = 镜像
+gui-sessions = 会话
+gui-no-target = 选择另一块磁盘上的文件夹
+gui-image-first = 先制作磁盘镜像
+gui-empty-title = 找回一切。
+gui-empty-hint = 在左侧选择磁盘、镜像或会话。Rescyo 只读取。
+gui-open-image = 打开镜像…
+gui-open-session = 打开会话…
+gui-deep = 深度扫描：读取整个磁盘以查找丢失的卷和文件夹
+gui-carve = 同时按文件签名查找文件
+gui-session-file = 会话文件
+gui-change = 更改…
+gui-scan = 扫描
+gui-stop = 停止
+gui-ok = 确定
+gui-cancel = 取消
+gui-back = 继续
+gui-recover-button = { $count ->
+        [0] 恢复
+       *[other] 恢复 { $count } 个文件
+    }
+gui-removable = 可移动
+gui-protected = 系统磁盘 · 受保护
+gui-fact-path = 路径
+gui-fact-size = 大小
+gui-fact-serial = 序列号
+gui-fact-folders = { $count } 个文件夹
+gui-fact-files = { $count } 个文件
+gui-system-disk = 这是正在运行系统的磁盘。Rescyo 只读取它，但不能把文件恢复到它上面，而且从它删除的文件一直在被覆盖：如有可能，请从另一台电脑恢复。
+gui-sheet-target = 恢复到文件夹
+gui-sheet-target-hint = 另一块磁盘上的文件夹。如不存在会自动创建；其中的内容不会被覆盖。
+gui-sheet-image = 打开磁盘镜像
+gui-sheet-image-hint = Raw、VHD、VHDX、VMDK、qcow2 或 E01。请输入完整路径。
+gui-sheet-session = 打开会话
+gui-sheet-session-hint = 之前扫描生成的 .rescyo 文件。
+gui-sheet-session-file = 会话文件
+gui-sheet-session-hint-new = 扫描结果保存的位置。
+gui-sheet-session-file-hint = 扫描结果保存的位置。请选择与被扫描磁盘不同的磁盘。
+gui-sheet-image-out = 镜像文件
+gui-sheet-image-out-hint = 另一块磁盘上的文件，需有容纳整块磁盘的空间。旁边的映射文件可让复制中断后继续。
+gui-scanning = 正在扫描 { $source }
+gui-imaging = 正在为 { $source } 制作镜像
+gui-scan-image = 扫描镜像
+gui-note-bad = 存在无法读取的扇区。
+gui-note-lost-title = 丢失的文件夹。
+gui-insp-path = 路径
+gui-recovering = 正在恢复 { $count } 个文件
+gui-recovered = 已恢复 { $files } 个文件 · { $size }
+gui-sum-failed = 无法写入
+gui-search = 在 { $count } 个文件中搜索…

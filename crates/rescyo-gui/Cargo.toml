@@ -13,6 +13,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+rescyo-core = { workspace = true }
+rescyo-fs = { workspace = true }
+rescyo-i18n = { workspace = true }
+rescyo-io = { workspace = true }
 slint = { version = "1.18.1", default-features = false, features = [
   "std",
   "compat-1-2",
@@ -20,7 +24,32 @@ slint = { version = "1.18.1", default-features = false, features = [
   "renderer-software",
   "software-renderer-path",
   "accessibility",
+  "unstable-fontique-011",
+  "unstable-winit-030",
+  "raw-window-handle-06",
 ] }
+raw-window-handle = "0.6.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+slint = { version = "1.18.1", default-features = false, features = ["renderer-femtovg"] }
+objc2 = "0.6.5"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSGeometry", "NSString", "NSUserDefaults"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "objc2-core-foundation",
+  "NSResponder",
+  "NSView",
+  "NSWindow",
+  "NSVisualEffectView",
+  "NSColor",
+  "NSWorkspace",
+  "NSGraphics",
+  "NSAccessibility",
+] }
+
+[[bin]]
+name = "rescyo-gui"
+path = "src/main.rs"
 
 [build-dependencies]
 rescyo-design = { workspace = true }

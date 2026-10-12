@@ -139,3 +139,56 @@ tui-help =
     s                 명명된 스트림  t         대상 폴더 선택
     r                 복구          q 또는 Esc 종료
 tui-keys =  Tab 패널 · Space 표시 · / 검색 · d 삭제됨 · t 대상 · r 복구 · ? 도움말 · q 종료
+
+## Desktop interface
+gui-sources = 소스
+gui-images = 이미지
+gui-sessions = 세션
+gui-no-target = 다른 디스크의 폴더를 선택하세요
+gui-image-first = 먼저 디스크 이미지 만들기
+gui-empty-title = 되찾으세요.
+gui-empty-hint = 왼쪽에서 디스크, 이미지 또는 세션을 선택하세요. Rescyo는 읽기만 합니다.
+gui-open-image = 이미지 열기…
+gui-open-session = 세션 열기…
+gui-deep = 정밀 스캔: 디스크 전체를 읽어 손실된 볼륨과 폴더 찾기
+gui-carve = 시그니처로도 파일 찾기
+gui-session-file = 세션 파일
+gui-change = 변경…
+gui-scan = 스캔
+gui-stop = 중지
+gui-ok = 확인
+gui-cancel = 취소
+gui-back = 계속
+gui-recover-button = { $count ->
+        [0] 복구
+       *[other] 파일 { $count }개 복구
+    }
+gui-removable = 이동식
+gui-protected = 시스템 디스크 · 보호됨
+gui-fact-path = 경로
+gui-fact-size = 크기
+gui-fact-serial = 일련번호
+gui-fact-folders = 폴더 { $count }개
+gui-fact-files = 파일 { $count }개
+gui-system-disk = 시스템이 실행 중인 디스크입니다. Rescyo는 읽기만 하지만 이 디스크로는 복구할 수 없고, 삭제된 파일은 계속 덮어써지고 있습니다. 가능하면 다른 컴퓨터에서 복구하세요.
+gui-sheet-target = 복구할 폴더
+gui-sheet-target-hint = 다른 디스크에 있는 폴더. 필요하면 만들어지며 안의 내용은 덮어쓰지 않습니다.
+gui-sheet-image = 디스크 이미지 열기
+gui-sheet-image-hint = Raw, VHD, VHDX, VMDK, qcow2 또는 E01. 전체 경로를 입력하세요.
+gui-sheet-session = 세션 열기
+gui-sheet-session-hint = 이전 스캔에서 만든 .rescyo 파일.
+gui-sheet-session-file = 세션 파일
+gui-sheet-session-hint-new = 스캔 결과를 저장할 위치.
+gui-sheet-session-file-hint = 스캔 결과를 저장할 위치. 스캔하는 디스크와 다른 디스크를 선택하세요.
+gui-sheet-image-out = 이미지 파일
+gui-sheet-image-out-hint = 디스크 전체가 들어갈 공간이 있는 다른 디스크의 파일. 옆의 맵으로 복사를 이어서 할 수 있습니다.
+gui-scanning = { $source } 스캔 중
+gui-imaging = { $source } 이미지 만드는 중
+gui-scan-image = 이미지 스캔
+gui-note-bad = 읽을 수 없는 섹터가 있습니다.
+gui-note-lost-title = 손실된 폴더.
+gui-insp-path = 경로
+gui-recovering = 파일 { $count }개 복구 중
+gui-recovered = 파일 { $files }개 복구됨 · { $size }
+gui-sum-failed = 쓰지 못한 파일
+gui-search = 파일 { $count }개에서 검색…

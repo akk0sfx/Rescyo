@@ -124,9 +124,10 @@ export component Button inherits Rectangle {
     background: !enabled ? Tokens.ink-3 : primary ? (touch.has-hover ? Tokens.rescue-hi : Tokens.rescue) : (touch.has-hover ? Tokens.ink-3 : Tokens.ink-2);
     border-width: primary ? 0 : 1px;
     border-color: Tokens.line;
+    // Only the enabled primary action casts its soft orange shadow.
     drop-shadow-blur: primary && enabled ? 18px : 0;
-    drop-shadow-offset-y: 6px;
-    drop-shadow-color: Tokens.rescue.with-alpha(0.35);
+    drop-shadow-offset-y: primary && enabled ? 6px : 0;
+    drop-shadow-color: primary && enabled ? Tokens.rescue.with-alpha(0.35) : transparent;
     accessible-role: button;
     accessible-label: text;
     accessible-enabled: enabled;
