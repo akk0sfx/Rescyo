@@ -92,3 +92,50 @@ partition-boot-backup = バックアップのブートセクタのみ
 partition-boot-none = ブートセクタなし
 partition-unpartitioned = パーティションテーブルなし：ディスク全体が 1 つのボリューム、{ $fs }{ $label }、{ $size }（{ $boot }）
 scan-carved = ボリューム { $id }：シグネチャで { $files } 個のファイルを検出（種類別のフォルダーに格納、復旧時に内容を検証）
+
+## Terminal interface
+tui-step-source = ソース
+tui-step-scan = スキャン
+tui-step-browse = 閲覧
+tui-step-recover = 復旧
+tui-search = { $count } 個のファイルを検索…（/）
+tui-fact-cluster = クラスタ
+tui-fact-data = データ開始
+tui-fact-folders = フォルダー
+tui-fact-files = ファイル
+tui-col-name = 名前
+tui-col-size = サイズ
+tui-col-modified = 更新日時
+tui-col-assembly = 組み立て
+tui-col-integrity = 整合性
+tui-intact = 正常
+tui-partial = 一部
+tui-damaged = 破損
+tui-unverified = 未検証
+tui-empty = ファイルはありません。
+tui-insp-runs = 断片
+tui-insp-state = 状態
+tui-insp-kind = 種類
+tui-deleted = 削除済み
+tui-live = 存在
+tui-stream = 名前付きストリーム
+tui-note-lost = 親フォルダーを失った { $count } 個のフォルダーは _LOST_FOLDERS にあります。
+tui-scanning = { $source } をスキャン中
+tui-recover-to = 復旧先
+tui-no-target = T を押して別のディスクのフォルダーを選択
+tui-preflight-ok = 事前確認：別のデバイス · 空き { $free } · 名前は問題なし
+tui-preflight-problems = { $count } 件の問題：{ $first }
+tui-recover-button = R  { $count } 個のファイルを復旧
+tui-input-target = 復旧先フォルダー
+tui-input-hint = 別のディスク上のフォルダー。Enter で確定、Esc で取り消し。
+tui-running = 復旧中… { $done } / { $total }（Esc で停止）
+tui-cancelled = 停止しました。書き込み済みのファイルは完全で、レポートに記載されています。
+tui-source-changed = ソースがこのセッションと一致しなくなりました。確かな場合はコマンドラインで --force-rebind を使用してください。
+tui-help-title = キー
+tui-help =
+    ↑ ↓ または j k     移動            Tab         フォルダーとファイルを切り替え
+    → ← または Enter   開く・閉じる    Space       ファイルをマーク   a   ここをすべてマーク
+    /                  検索            d           削除済みの表示切り替え
+    s                  名前付きストリーム  t       復旧先フォルダーを選択
+    r                  復旧            q / Esc     終了
+tui-keys =  Tab パネル · Space マーク · / 検索 · d 削除済み · t 復旧先 · r 復旧 · ? ヘルプ · q 終了
