@@ -264,6 +264,111 @@ fn partitions_finds_a_partition_whose_table_was_wiped() {
 }
 
 #[test]
+fn containers_scan_like_their_raw_image_and_image_converts_them() {
+    let Some(img) = image("ntfs-mbr") else { return };
+    let containers = img.parent().unwrap().join("containers");
+    if !containers.join("containers.json").exists() {
+        eprintln!("skipped: no containers (run `cargo xtask containers`)");
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let listing = |source: &Path, tag: &str| -> Vec<String> {
+        let session = dir.path().join(format!("{tag}.db"));
+        let o = rescyo(&[
+            "scan",
+            source.to_str().unwrap(),
+            "--session",
+            session.to_str().unwrap(),
+            "--json",
+        ]);
+        assert_eq!(
+            o.status.code(),
+            Some(0),
+            "{tag}: {}",
+            String::from_utf8_lossy(&o.stdout)
+        );
+        let o = rescyo(&["ls", session.to_str().unwrap(), "--deleted", "--json"]);
+        let mut paths: Vec<String> = json(&o)["data"]["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| format!("{} {}", e["path"], e["size"]))
+            .collect();
+        paths.sort();
+        paths
+    };
+    let want = listing(&img, "raw");
+    assert!(want.len() > 300);
+    for (file, tag) in [
+        ("dynamic.vhdx", "vhdx"),
+        ("stream.vmdk", "vmdk"),
+        ("evidence.E02", "e01"),
+    ] {
+        assert_eq!(listing(&containers.join(file), tag), want, "{file}");
+    }
+
+    // People see which container was opened; `image` turns it back into the raw image.
+    let o = rescyo(&[
+        "scan",
+        containers.join("compressed.qcow2").to_str().unwrap(),
+        "--session",
+        dir.path().join("q.db").to_str().unwrap(),
+        "--lang",
+        "en",
+    ]);
+    let text = String::from_utf8_lossy(&o.stdout);
+    assert!(text.contains("QCOW2 image"), "{text}");
+    let raw = dir.path().join("back.img");
+    let o = rescyo(&[
+        "image",
+        containers.join("dynamic.vhd").to_str().unwrap(),
+        "--to",
+        raw.to_str().unwrap(),
+        "--json",
+    ]);
+    assert_eq!(o.status.code(), Some(0), "{}", String::from_utf8_lossy(&o.stdout));
+    assert_eq!(std::fs::read(&raw).unwrap(), std::fs::read(&img).unwrap());
+}
+
+#[test]
+fn unsupported_and_orphaned_images_fail_with_their_own_codes() {
+    let dir = tempfile::tempdir().unwrap();
+    let scan = |p: &Path, session: &str| {
+        rescyo(&[
+            "scan",
+            p.to_str().unwrap(),
+            "--session",
+            dir.path().join(session).to_str().unwrap(),
+            "--json",
+        ])
+    };
+    // An encrypted qcow2 header.
+    let mut q = vec![0u8; 512];
+    q[0..4].copy_from_slice(b"QFI\xfb");
+    q[4..8].copy_from_slice(&2u32.to_be_bytes());
+    q[20..24].copy_from_slice(&16u32.to_be_bytes());
+    q[24..32].copy_from_slice(&(1u64 << 20).to_be_bytes());
+    q[32..36].copy_from_slice(&1u32.to_be_bytes());
+    let enc = dir.path().join("enc.qcow2");
+    std::fs::write(&enc, &q).unwrap();
+    let o = scan(&enc, "a.db");
+    assert_eq!(o.status.code(), Some(3));
+    assert_eq!(json(&o)["error"]["code"], "image_unsupported");
+
+    // A qcow2 overlay whose backing file is gone.
+    q[32..36].fill(0);
+    let name = b"gone.qcow2";
+    q[8..16].copy_from_slice(&256u64.to_be_bytes());
+    q[16..20].copy_from_slice(&u32::try_from(name.len()).unwrap().to_be_bytes());
+    q[256..256 + name.len()].copy_from_slice(name);
+    let top = dir.path().join("top.qcow2");
+    std::fs::write(&top, &q).unwrap();
+    let o = scan(&top, "b.db");
+    assert_eq!(o.status.code(), Some(3));
+    assert_eq!(json(&o)["error"]["code"], "parent_image_missing");
+}
+
+#[test]
 fn carving_brings_back_photos_from_a_disk_without_any_file_system() {
     let Some(img) = image("fat16-mbr") else {
         eprintln!("skipped: corpus not generated");

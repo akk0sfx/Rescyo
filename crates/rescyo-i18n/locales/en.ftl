@@ -70,6 +70,8 @@ problem-file-too-large = { $path } is { $size }, larger than the target file sys
 problem-nothing-selected = Nothing matches the selection.
 
 error-source-open = Cannot open { $source }: { $reason }
+error-image-unsupported = Cannot open { $source }: { $reason }. Convert it to a raw image (for example with qemu-img) and open that.
+error-parent-missing = { $source } is a differencing image and its parent was not found (tried: { $tried }). Put the parent image next to it.
 error-source-mismatch = { $source } is not the source this session was made from ({ $reason }). Use --force-rebind only if you are sure.
 error-session-exists = { $path } already exists. Rescyo never overwrites a session; choose another file name.
 error-session-invalid = { $path } is not a Rescyo session: { $reason }
@@ -86,6 +88,8 @@ hint-admin = Reading disks needs administrator rights on Windows or sudo on Linu
 
 ## Imaging
 image-start = Imaging { $source } to { $image } (map: { $map })…
+container-opened = { $format } image: virtual disk of { $size } in { $files } file(s).
+container-note = Image note: { $note }
 phase-image-copy = Copying
 phase-image-trim = Trimming bad areas
 phase-image-scrape = Scraping bad areas

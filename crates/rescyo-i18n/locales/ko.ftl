@@ -43,6 +43,8 @@ problem-file-too-large = { $path }의 크기는 { $size }로 대상 파일 시�
 problem-nothing-selected = 선택 조건에 맞는 항목이 없습니다.
 
 error-source-open = { $source }을(를) 열 수 없습니다: { $reason }
+error-image-unsupported = { $source }을(를) 열 수 없습니다: { $reason }. raw 이미지로 변환한 뒤(예: qemu-img) 여세요.
+error-parent-missing = { $source }은(는) 차등 이미지인데 부모 이미지를 찾을 수 없습니다(시도한 경로: { $tried }). 부모 이미지를 같은 위치에 두세요.
 error-source-mismatch = { $source }은(는) 이 세션을 만든 원본이 아닙니다({ $reason }). 확실한 경우에만 --force-rebind를 사용하십시오.
 error-session-exists = { $path }이(가) 이미 있습니다. Rescyo는 세션을 덮어쓰지 않습니다. 다른 파일 이름을 지정하십시오.
 error-session-invalid = { $path }은(는) Rescyo 세션이 아닙니다: { $reason }
@@ -59,6 +61,8 @@ hint-admin = 디스크를 읽으려면 Windows에서는 관리자 권한, Linux�
 
 ## Imaging
 image-start = { $source }의 이미지를 { $image }에 만드는 중(맵: { $map })…
+container-opened = { $format } 이미지: 가상 디스크 { $size }, 파일 { $files }개.
+container-note = 이미지 참고: { $note }
 phase-image-copy = 복사
 phase-image-trim = 불량 영역 다듬기
 phase-image-scrape = 불량 영역 섹터별 읽기
