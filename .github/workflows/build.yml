@@ -120,6 +120,9 @@ jobs:
     # from 2014 on.
     name: linux gui ${{ matrix.target }}
     runs-on: ubuntu-latest
+    env:
+      # Load fontconfig at run time like X11 and Wayland, instead of linking it.
+      RUST_FONTCONFIG_DLOPEN: "on"
     strategy:
       fail-fast: false
       matrix:
