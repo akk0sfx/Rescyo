@@ -17,6 +17,32 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  attribution:
+    name: no co-author or AI attribution lines
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Commit messages and the PR description stay free of attribution trailers
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          pattern='^[[:space:]]*co-authored-by:|generated with \[?claude|noreply@anthropic\.com'
+          bad=$(git log --format='%h %s%n%b' "$BASE..$HEAD" | grep -iE "$pattern" || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Commits carry co-author or AI attribution lines (project rule):"
+            git log --format='%h %s' -i -E --grep="$pattern" "$BASE..$HEAD"
+            exit 1
+          fi
+          if printf '%s' "$BODY" | grep -iqE "$pattern"; then
+            echo "::error::The pull request description carries an AI attribution line (project rule)."
+            exit 1
+          fi
+
   lint:
     name: fmt + clippy
     runs-on: ubuntu-latest
