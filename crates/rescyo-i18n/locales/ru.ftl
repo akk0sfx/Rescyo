@@ -130,3 +130,8 @@ partition-boot-primary = загрузочный сектор
 partition-boot-backup = только резервная копия загрузочного сектора
 partition-boot-none = нет загрузочного сектора
 partition-unpartitioned = Таблицы разделов нет: весь диск — один том, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = Том { $id }: { $files ->
+        [one] { $files } файл найден
+        [few] { $files } файла найдено
+       *[many] { $files } файлов найдено
+    } по сигнатурам (в папках по типу; содержимое проверяется при восстановлении)

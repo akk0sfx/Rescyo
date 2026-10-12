@@ -1,0 +1,9 @@
+name = "ext4-mbr"
+fs = "ext4"
+table = "mbr"
+part_start_mib = 1
+size_mib = 64
+cluster = 4096
+# Experimental tier (ADR-0005): the backup superblock is tested; the group descriptors have no
+# fallback yet.
+corruptions = ["none", "mbr", "superblock"]

@@ -74,7 +74,7 @@ impl FatTable {
                 Some(v) => v,
                 None => return Ok(Link::Unknown),
             },
-            FsKind::Ntfs => return Ok(Link::Invalid),
+            FsKind::Ntfs | FsKind::Ext4 | FsKind::Carved => return Ok(Link::Invalid),
         };
         Ok(self.decode(cluster, raw))
     }
@@ -165,7 +165,7 @@ pub fn is_fat_head(b: &[u8], fs: FsKind) -> bool {
                     .is_some_and(|e| u32::from_le_bytes(e) & 0x0FFF_FFFF >= 0x0FFF_FFF8)
         }
         FsKind::Exfat => b.get(0..8) == Some(&[0xF8, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF][..]),
-        FsKind::Ntfs => false,
+        FsKind::Ntfs | FsKind::Ext4 | FsKind::Carved => false,
     }
 }
 

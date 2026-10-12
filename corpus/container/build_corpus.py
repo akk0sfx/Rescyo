@@ -308,6 +308,22 @@ class FuseFs:
         self.mnt.rmdir()
 
 
+class KernelFs(FuseFs):
+    """ext4 populated through the kernel driver of the container's VM on a loop device, so
+    deletions behave exactly as Linux does them."""
+
+    def __init__(self, part: Path):
+        self.mnt = Path(tempfile.mkdtemp(prefix="fs-"))
+        self.loop = run("losetup", "--find", "--show", part).stdout.strip()
+        run("mount", "-t", "ext4", self.loop, self.mnt)
+
+    def close(self):
+        os.sync()
+        run("umount", self.mnt)
+        run("losetup", "--detach", self.loop)
+        self.mnt.rmdir()
+
+
 # --------------------------------------------------------------------------- the file tree
 
 
@@ -473,6 +489,11 @@ def make_volume(sc, part: Path):
     elif fs == "ntfs":
         run("mkntfs", "-F", "-Q", "-s", SECTOR, "-c", cluster, "-p", hidden, "-H", 255, "-S", 63,
             "-L", "RESCYO", part)
+    elif fs == "ext4":
+        # Two block groups, so a backup superblock exists (group 1).
+        run("mkfs.ext4", "-F", "-q", "-b", cluster, "-g", 8192, "-L", "RESCYO", "-U", "52455343-0000-4000-8000-000000000003",
+            "-E", "lazy_itable_init=0,lazy_journal_init=0", part)
+        return KernelFs(part)
     else:
         raise SystemExit(f"unknown fs {fs}")
     return FuseFs(part, fs)
@@ -488,7 +509,7 @@ def assemble(sc, part: Path, image: Path):
     total = start + part_size + MIB  # room for the backup GPT
     with open(image, "wb") as fh:
         fh.truncate(total)
-    types = {"fat12": "1", "fat16": "e", "fat32": "c", "exfat": "7", "ntfs": "7"}
+    types = {"fat12": "1", "fat16": "e", "fat32": "c", "exfat": "7", "ntfs": "7", "ext4": "83"}
     if table == "mbr":
         script = (f"label: dos\nlabel-id: 0x52455343\n"
                   f"start={start // SECTOR}, size={part_size // SECTOR}, type={types[sc['fs']]}\n")
@@ -554,6 +575,17 @@ def layout_of(fs, image: Path, p: int, part_size: int):
         dmg = {"boot": rng(p, bps), "backup_boot": rng(p + part_size - bps, bps),
                "mft_head": rng(p + mft * clus, 4 * rec), "mftmirr": rng(p + mirr * clus, 4 * rec),
                "root_record": rng(p + mft * clus + 5 * rec, rec)}
+        return lay, dmg
+    if fs == "ext4":
+        with open(image, "rb") as fh:
+            fh.seek(p + 1024)
+            sb = fh.read(1024)
+        block = 1024 << struct.unpack_from("<I", sb, 24)[0]
+        bpg = struct.unpack_from("<I", sb, 32)[0]
+        first = struct.unpack_from("<I", sb, 20)[0]
+        lay = {"block_size": block, "blocks_per_group": bpg, "first_data_block": first}
+        dmg = {"superblock": rng(p + 1024, 1024),
+               "group_descriptors": rng(p + (first + 1) * block, block)}
         return lay, dmg
     raise SystemExit(f"unknown fs {fs}")
 

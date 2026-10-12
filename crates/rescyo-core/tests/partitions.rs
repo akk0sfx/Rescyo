@@ -22,12 +22,13 @@ fn partition_search_finds_every_volume_that_can_be_found() {
         for corruption in &e.corruptions {
             let tokens: Vec<&str> = corruption.split('+').collect();
             let has = |t: &str| tokens.contains(&t);
-            let primary = !has("boot") && !has("boot_and_backup");
-            let backup = matches!(e.fs.as_str(), "fat32" | "exfat" | "ntfs")
+            let primary = !has("boot") && !has("boot_and_backup") && !has("superblock");
+            let backup = matches!(e.fs.as_str(), "fat32" | "exfat" | "ntfs" | "ext4")
                 && !has("backup_boot")
                 && !has("boot_and_backup");
             // exFAT checks itself by its boot-region checksum; FAT needs one surviving table.
-            let table_ok = e.fs == "exfat" || e.fs == "ntfs" || !(has("fat1") && has("fat2"));
+            let table_ok =
+                matches!(e.fs.as_str(), "exfat" | "ntfs" | "ext4") || !(has("fat1") && has("fat2"));
             let findable = (primary || backup) && table_ok;
             let r = GuardedReader::new(s.open(corruption).unwrap(), ReadPolicy::default());
             let rep = find_partitions(&r, &mut |_| {}, &CancelToken::new()).unwrap();

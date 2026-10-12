@@ -91,3 +91,4 @@ partition-boot-primary = 부트 섹터
 partition-boot-backup = 백업 부트 섹터만
 partition-boot-none = 부트 섹터 없음
 partition-unpartitioned = 파티션 테이블 없음: 디스크 전체가 하나의 볼륨, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = 볼륨 { $id }: 시그니처로 파일 { $files }개 발견(유형별 폴더에 정리, 복구할 때 내용을 검사)

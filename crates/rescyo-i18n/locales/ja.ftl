@@ -91,3 +91,4 @@ partition-boot-primary = ブートセクタ
 partition-boot-backup = バックアップのブートセクタのみ
 partition-boot-none = ブートセクタなし
 partition-unpartitioned = パーティションテーブルなし：ディスク全体が 1 つのボリューム、{ $fs }{ $label }、{ $size }（{ $boot }）
+scan-carved = ボリューム { $id }：シグネチャで { $files } 個のファイルを検出（種類別のフォルダーに格納、復旧時に内容を検証）

@@ -83,8 +83,12 @@ A second, named content of a file (an NTFS alternate data stream), listed and re
 _Avoid_: fork, ADS (in user-facing text)
 
 **Assembly method**:
-How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.
+How an Entry's byte extents were determined: `fat_chain`, `fat_chain_mirror`, `exfat_bitmap_contiguous`, `mft_runlist`, `ext4_extents`, `block_map`, `contiguous_assumed`, `carved`. Ordered from most to least trustworthy.
 _Avoid_: reliability, confidence, source
+
+**Carving**:
+Finding files by their own structure (signature and format) where no file system describes them. A carved file is assumed contiguous, so its content is always verified; carved files are kept in a separate `carved` pseudo-volume, never mixed with a file system's Entries.
+_Avoid_: raw recovery, signature search (in user-facing text)
 
 **Contiguous assumption**:
 The Assembly method `contiguous_assumed`: no allocation metadata survived, so the Entry is read as one run from its first cluster. Always a guess.
