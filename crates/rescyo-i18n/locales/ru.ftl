@@ -135,3 +135,50 @@ scan-carved = Том { $id }: { $files ->
         [few] { $files } файла найдено
        *[many] { $files } файлов найдено
     } по сигнатурам (в папках по типу; содержимое проверяется при восстановлении)
+
+## Terminal interface
+tui-step-source = Источник
+tui-step-scan = Скан
+tui-step-browse = Обзор
+tui-step-recover = Восстановление
+tui-search = Поиск среди { $count } файлов…  (/)
+tui-fact-cluster = кластер
+tui-fact-data = данные с
+tui-fact-folders = папок
+tui-fact-files = файлов
+tui-col-name = Имя
+tui-col-size = Размер
+tui-col-modified = Изменён
+tui-col-assembly = Сборка
+tui-col-integrity = Целостность
+tui-intact = Цел
+tui-partial = Частично
+tui-damaged = Повреждён
+tui-unverified = Не проверен
+tui-empty = Здесь нет файлов.
+tui-insp-runs = Фрагментов
+tui-insp-state = Состояние
+tui-insp-kind = Тип
+tui-deleted = удалён
+tui-live = на месте
+tui-stream = именованный поток
+tui-note-lost = Папок без родителя: { $count }, они в _LOST_FOLDERS.
+tui-scanning = Сканирую { $source }
+tui-recover-to = Восстановить в
+tui-no-target = нажмите T и выберите папку на другом диске
+tui-preflight-ok = Проверка: другой диск · свободно { $free } · имена в порядке
+tui-preflight-problems = Проблем: { $count }. { $first }
+tui-recover-button = R  Восстановить файлов: { $count }
+tui-input-target = Папка для восстановления
+tui-input-hint = Папка на другом диске. Enter — подтвердить, Esc — отмена.
+tui-running = Восстанавливаю… { $done } из { $total }  (Esc — остановить)
+tui-cancelled = Остановлено. Уже записанные файлы целы и перечислены в отчёте.
+tui-source-changed = Источник больше не совпадает с этой сессией. Если вы уверены, воспользуйтесь командной строкой с --force-rebind.
+tui-help-title = Клавиши
+tui-help =
+    ↑ ↓ или j k      перемещение       Tab        папки или файлы
+    → ← или Enter    открыть, закрыть  Пробел     отметить файл   a   отметить все здесь
+    /                поиск             d          показать или скрыть удалённые
+    s                именованные потоки  t        выбрать папку для восстановления
+    r                восстановить      q или Esc  выход
+tui-keys =  Tab панели · Пробел отметить · / поиск · d удалённые · t папка · r восстановить · ? справка · q выход

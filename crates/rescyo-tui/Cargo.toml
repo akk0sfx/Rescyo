@@ -1,0 +1,27 @@
+[package]
+name = "rescyo-tui"
+description = "Terminal interface for Rescyo (ratatui): browse a Session and recover, over SSH too."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+crossterm = "0.29.0"
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm"] }
+rescyo-core = { workspace = true }
+rescyo-design = { workspace = true }
+rescyo-fs = { workspace = true }
+rescyo-i18n = { workspace = true }
+rescyo-io = { workspace = true }
+
+[dev-dependencies]
+rescyo-io = { workspace = true, features = ["testing"] }
+tempfile = "3.27.0"
+serde_json = "1.0.154"

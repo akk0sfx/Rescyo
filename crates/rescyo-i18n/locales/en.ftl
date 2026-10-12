@@ -125,3 +125,50 @@ scan-carved = Volume { $id }: { $files ->
         [one] 1 file
        *[other] { $files } files
     } carved by their signatures (in folders by type; their content is checked on recovery)
+
+## Terminal interface
+tui-step-source = Source
+tui-step-scan = Scan
+tui-step-browse = Browse
+tui-step-recover = Recover
+tui-search = Search { $count } files…  (/)
+tui-fact-cluster = cluster
+tui-fact-data = data at
+tui-fact-folders = folders
+tui-fact-files = files
+tui-col-name = Name
+tui-col-size = Size
+tui-col-modified = Modified
+tui-col-assembly = Assembly
+tui-col-integrity = Integrity
+tui-intact = Intact
+tui-partial = Partial
+tui-damaged = Damaged
+tui-unverified = Unverified
+tui-empty = No files here.
+tui-insp-runs = Fragments
+tui-insp-state = State
+tui-insp-kind = Kind
+tui-deleted = deleted
+tui-live = present
+tui-stream = named stream
+tui-note-lost = { $count } folders whose parent is lost are under _LOST_FOLDERS.
+tui-scanning = Scanning { $source }
+tui-recover-to = Recover to
+tui-no-target = press T to choose a folder on another disk
+tui-preflight-ok = Preflight: different device · { $free } free · names OK
+tui-preflight-problems = { $count } problems: { $first }
+tui-recover-button = R  Recover { $count } files
+tui-input-target = Recover to folder
+tui-input-hint = A folder on a different disk. Enter to confirm, Esc to cancel.
+tui-running = Recovering… { $done } of { $total }  (Esc stops)
+tui-cancelled = Stopped. Files already written are complete and listed in the report.
+tui-source-changed = The source no longer matches this session. Use the command line with --force-rebind if you are sure.
+tui-help-title = Keys
+tui-help =
+    ↑ ↓ or j k      move          Tab        switch between folders and files
+    → ← or Enter    open, close    Space      mark a file    a   mark all here
+    /               search         d          show or hide deleted files
+    s               named streams  t          choose the target folder
+    r               recover        q or Esc   quit
+tui-keys =  Tab panes · Space mark · / search · d deleted · t target · r recover · ? help · q quit

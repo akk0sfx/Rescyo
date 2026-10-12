@@ -1,6 +1,7 @@
 //! Rescyo core: Sessions, Scans, Recovery and Reports, shared by every interface.
 #![forbid(unsafe_code)]
 
+pub mod browse;
 pub mod imaging;
 pub mod import;
 pub mod partsearch;

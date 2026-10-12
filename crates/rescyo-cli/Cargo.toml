@@ -23,6 +23,7 @@ rescyo-core = { workspace = true }
 rescyo-dmde = { workspace = true }
 rescyo-fs = { workspace = true }
 rescyo-i18n = { workspace = true }
+rescyo-tui = { workspace = true }
 rescyo-io = { workspace = true }
 schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }

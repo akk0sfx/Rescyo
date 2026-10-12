@@ -120,6 +120,7 @@ impl SelectArgs {
             path_prefix: self.path.clone(),
             volume: self.volume,
             streams: self.streams,
+            ids: Vec::new(),
         }
     }
 }
@@ -214,6 +215,28 @@ enum Command {
     },
     /// Show a session's source, volumes and journal.
     Info { session: PathBuf },
+    /// The terminal interface: browse a session, or scan a disk or image into a new one.
+    Tui {
+        /// A session file to browse, or (with --session) a disk or image to scan.
+        target: String,
+        /// New session file to create when TARGET is a disk or image.
+        #[arg(long)]
+        session: Option<PathBuf>,
+        /// Also read the whole source for lost volumes and folders.
+        #[arg(long, requires = "session")]
+        deep: bool,
+        /// With --deep, also carve files by their signatures.
+        #[arg(long, requires = "deep")]
+        carve: bool,
+        /// Use the light theme.
+        #[arg(long)]
+        light: bool,
+        /// Allow a session file on a disk Rescyo cannot identify.
+        #[arg(long)]
+        allow_unverified_target: bool,
+        #[command(flatten)]
+        src: SourceArgs,
+    },
     /// Read a disk or image for boot sectors and list the volumes found, including partitions
     /// missing from the table (nothing is written).
     Partitions {
@@ -262,6 +285,7 @@ impl Command {
             Self::Info { .. } => "info",
             Self::Image { .. } => "image",
             Self::Partitions { .. } => "partitions",
+            Self::Tui { .. } => "tui",
         }
     }
 }
@@ -365,6 +389,24 @@ fn main() -> ExitCode {
         }
         Command::Info { session } => info(&mut out, session),
         Command::Partitions { source, src } => partitions(&mut out, source, src, &cancel),
+        Command::Tui {
+            target,
+            session,
+            deep,
+            carve,
+            light,
+            allow_unverified_target,
+            src,
+        } => tui(
+            &out,
+            target,
+            session.as_deref(),
+            (*deep, *carve),
+            *light,
+            *allow_unverified_target,
+            src,
+            cli.global.lang.as_deref(),
+        ),
         Command::Image {
             source,
             to,
@@ -538,6 +580,40 @@ fn disks(out: &mut Out) -> Result<u8, Failure> {
         }
     }
     out.done(&data);
+    Ok(0)
+}
+
+#[allow(clippy::too_many_arguments, reason = "one argument per command-line option")]
+fn tui(
+    out: &Out,
+    target: &str,
+    session: Option<&Path>,
+    (deep, carve): (bool, bool),
+    light: bool,
+    allow_unverified: bool,
+    src: &SourceArgs,
+    lang: Option<&str>,
+) -> Result<u8, Failure> {
+    let opts = rescyo_tui::Options {
+        lang: lang.map(str::to_owned),
+        dark: !light,
+    };
+    let opener = |path: &str| open_source(out, path, src, BadSectorMap::new()).map_err(|f| f.message);
+    let result = match session {
+        None => rescyo_tui::browse(Path::new(target), &opener, &opts),
+        Some(path) => {
+            let r = open_source(out, target, src, BadSectorMap::new())?;
+            let s = new_session(&r, path, allow_unverified)?;
+            let scan = ScanOptions {
+                mode: if deep { ScanMode::Deep } else { ScanMode::Quick },
+                locale_codepage: locale_codepage(out.lang()),
+                carve,
+                ..ScanOptions::default()
+            };
+            rescyo_tui::scan_and_browse(&r, s, target, &scan, &opener, &opts)
+        }
+    };
+    result.map_err(|e| Failure::internal(&e.to_string()))?;
     Ok(0)
 }
 

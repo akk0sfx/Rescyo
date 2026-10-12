@@ -4,3 +4,4 @@
 *.bin binary
 *.ftl text eol=lf
 *.wof binary
+*.ttf binary

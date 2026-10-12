@@ -186,7 +186,7 @@ mod tests {
         let args: Vec<(&str, Arg<'_>)> = [
             "source", "path", "session", "target", "report", "reason", "devices", "fs", "offset", "log",
             "size", "needed", "free", "limit", "map", "image", "rescued", "boot", "table", "label", "format",
-            "note", "tried",
+            "note", "tried", "first", "done", "total",
         ]
         .iter()
         .map(|k| (*k, Arg::from("x")))

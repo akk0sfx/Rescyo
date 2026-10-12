@@ -92,3 +92,50 @@ partition-boot-backup = 仅有备份引导扇区
 partition-boot-none = 无引导扇区
 partition-unpartitioned = 没有分区表：整个磁盘是一个卷，{ $fs }{ $label }，{ $size }（{ $boot }）
 scan-carved = 卷 { $id }：按签名找到 { $files } 个文件（按类型分文件夹存放；恢复时会检查内容）
+
+## Terminal interface
+tui-step-source = 来源
+tui-step-scan = 扫描
+tui-step-browse = 浏览
+tui-step-recover = 恢复
+tui-search = 在 { $count } 个文件中搜索…（/）
+tui-fact-cluster = 簇
+tui-fact-data = 数据起始
+tui-fact-folders = 文件夹
+tui-fact-files = 文件
+tui-col-name = 名称
+tui-col-size = 大小
+tui-col-modified = 修改时间
+tui-col-assembly = 组装方式
+tui-col-integrity = 完整性
+tui-intact = 完整
+tui-partial = 部分
+tui-damaged = 已损坏
+tui-unverified = 未验证
+tui-empty = 这里没有文件。
+tui-insp-runs = 片段
+tui-insp-state = 状态
+tui-insp-kind = 类型
+tui-deleted = 已删除
+tui-live = 存在
+tui-stream = 命名流
+tui-note-lost = 有 { $count } 个文件夹的父文件夹已丢失，已放在 _LOST_FOLDERS 下。
+tui-scanning = 正在扫描 { $source }
+tui-recover-to = 恢复到
+tui-no-target = 按 T 选择另一块磁盘上的文件夹
+tui-preflight-ok = 预检：不同的设备 · 可用 { $free } · 文件名正常
+tui-preflight-problems = { $count } 个问题：{ $first }
+tui-recover-button = R  恢复 { $count } 个文件
+tui-input-target = 恢复到文件夹
+tui-input-hint = 另一块磁盘上的文件夹。按 Enter 确认，按 Esc 取消。
+tui-running = 正在恢复…{ $done } / { $total }（按 Esc 停止）
+tui-cancelled = 已停止。已写入的文件是完整的，并已列在报告中。
+tui-source-changed = 来源已不再与此会话匹配。如果确定，请在命令行中使用 --force-rebind。
+tui-help-title = 按键
+tui-help =
+    ↑ ↓ 或 j k      移动          Tab       在文件夹和文件之间切换
+    → ← 或 Enter    展开、折叠    空格      标记文件    a   标记此处全部
+    /               搜索          d         显示或隐藏已删除文件
+    s               命名流        t         选择目标文件夹
+    r               恢复          q 或 Esc  退出
+tui-keys =  Tab 切换面板 · 空格 标记 · / 搜索 · d 已删除 · t 目标 · r 恢复 · ? 帮助 · q 退出

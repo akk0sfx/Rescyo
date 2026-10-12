@@ -1,0 +1,64 @@
+# Rescyo design tokens: the single source for the GUI (Slint), the TUI and the website.
+# docs/design/README.md documents them; a test keeps the two in step. Never use colour or size
+# literals in components: add a token here instead.
+
+[color.dark]
+ink-0 = "#0A0A0F"   # window ground
+ink-1 = "#111119"   # panels, content area
+ink-2 = "#181822"   # raised rows, inputs
+ink-3 = "#22222E"   # hover, selection ground
+line = "#ECECFF14"  # hairlines (rgba 236,236,255,.08)
+text = "#F1F1F6"
+text-2 = "#A3A4B5"
+text-3 = "#6C6D80"
+rescue = "#FF5A1F"  # the one accent: primary action, focus, brand
+rescue-hi = "#FF8A3D"
+ok = "#3DD68C"      # intact, readable
+warn = "#F5C542"    # partial, contiguous assumption
+bad = "#FF5C6C"     # damaged, unreadable
+info = "#5AB8FF"    # mirror FAT, hints
+
+[color.light]
+ink-0 = "#F4F4F7"
+ink-1 = "#FFFFFF"
+ink-2 = "#EEEEF3"
+ink-3 = "#E3E3EB"
+line = "#1414281A"  # rgba 20,20,40,.10
+text = "#12121A"
+text-2 = "#55576A"
+text-3 = "#8A8C9E"
+rescue = "#E8480F"
+rescue-hi = "#FF7A2E"
+ok = "#14965F"
+warn = "#A87700"
+bad = "#D92D40"
+info = "#1E6FD0"
+
+[radius]  # px
+chip = 6
+control = 10
+panel = 14
+window = 22
+
+[space]  # px, 4 px grid
+xs = 4
+s = 8
+m = 12
+l = 16
+xl = 24
+xxl = 32
+xxxl = 48
+
+[type]  # px
+scale = [11, 12, 13, 15, 18, 24, 32, 48]
+body = 13
+eyebrow = 11
+eyebrow-tracking = 0.12  # em
+
+[font]
+display = "Unbounded"
+text = "Onest"
+data = "JetBrains Mono"
+cjk-sc = "Noto Sans SC"
+cjk-jp = "Noto Sans JP"
+cjk-kr = "Noto Sans KR"
