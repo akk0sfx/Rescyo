@@ -7,6 +7,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Added
 
 - **HFS+ and HFSX (experimental)**: volume header or its backup, the catalog B-tree, data forks with the extents overflow file, decomposed names composed; deleted catalog records are looked for in node free space (macOS wipes them, so on macOS-written volumes deleted files come back by carving). Partition search finds HFS+ volumes by either header. Tested on images made by macOS itself (`corpus/apple`).
+- **Apple disk images (DMG)** as sources: raw (UDRO/UDRW) and compressed with ADC (UDCO), zlib (UDZO), bzip2 (UDBZ), LZFSE (ULFO) or LZMA (ULMO). The decoders are Rescyo's own, safe and bounded; a chunk that fails to decode makes only its sectors unreadable. Encrypted, segmented and sparse images are recognised and reported as unsupported.
 
 ## [0.3.0] — 2026-10-12
 

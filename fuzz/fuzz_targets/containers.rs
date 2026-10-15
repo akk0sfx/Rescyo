@@ -1,4 +1,4 @@
-//! Any bytes as a container image (VHD, VHDX, VMDK, qcow2, E01, chosen by the first byte):
+//! Any bytes as a container image (VHD, VHDX, VMDK, qcow2, E01, DMG, chosen by the first byte):
 //! opening and reading the virtual disk must never panic, hang or allocate without bound.
 #![no_main]
 
@@ -7,12 +7,13 @@ use std::io::Write;
 use libfuzzer_sys::fuzz_target;
 use rescyo_io::{ContainerFormat, open_image};
 
-const FORMATS: [ContainerFormat; 5] = [
+const FORMATS: [ContainerFormat; 6] = [
     ContainerFormat::Vhd,
     ContainerFormat::Vhdx,
     ContainerFormat::Vmdk,
     ContainerFormat::Qcow2,
     ContainerFormat::Ewf,
+    ContainerFormat::Dmg,
 ];
 
 fuzz_target!(|data: &[u8]| {

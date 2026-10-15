@@ -1,6 +1,6 @@
 [package]
 name = "rescyo-codec"
-description = "Decoders for Windows file-system compression: LZNT1, XPRESS Huffman, LZX and the WOF chunk format."
+description = "Safe decoders for file-system and disk-image compression: LZNT1, XPRESS Huffman, LZX, WOF, ADC, bzip2, LZFSE/LZVN and xz."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

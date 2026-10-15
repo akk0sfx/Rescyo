@@ -1,4 +1,4 @@
-//! Virtual-disk containers (VHD, VHDX, VMDK, qcow2, EWF/E01) as read-only Sources.
+//! Virtual-disk containers (VHD, VHDX, VMDK, qcow2, EWF/E01, Apple DMG) as read-only Sources.
 //!
 //! A container maps the bytes of a virtual disk onto one or more host files through tables
 //! (block allocation tables, grain tables, L1/L2 tables, chunk tables). Each format here only
@@ -14,6 +14,7 @@
 //!
 //! All files are opened with read access only, as everywhere in this crate (ADR-0003).
 
+mod dmg;
 mod ewf;
 mod qcow2;
 mod vhd;
@@ -44,16 +45,19 @@ pub enum ContainerFormat {
     Qcow2,
     /// Expert Witness / EnCase E01 (and SMART S01) evidence files, one or more segments.
     Ewf,
+    /// Apple UDIF disk image (`.dmg`): raw, or ADC, zlib, bzip2, LZFSE or LZMA compressed.
+    Dmg,
 }
 
 impl ContainerFormat {
-    pub const ALL: [ContainerFormat; 6] = [
+    pub const ALL: [ContainerFormat; 7] = [
         ContainerFormat::Raw,
         ContainerFormat::Vhd,
         ContainerFormat::Vhdx,
         ContainerFormat::Vmdk,
         ContainerFormat::Qcow2,
         ContainerFormat::Ewf,
+        ContainerFormat::Dmg,
     ];
 
     /// The short name used on the command line and in JSON (`raw`, `vhd`, `vhdx`, …).
@@ -65,6 +69,7 @@ impl ContainerFormat {
             ContainerFormat::Vmdk => "vmdk",
             ContainerFormat::Qcow2 => "qcow2",
             ContainerFormat::Ewf => "e01",
+            ContainerFormat::Dmg => "dmg",
         }
     }
 
@@ -73,6 +78,7 @@ impl ContainerFormat {
         match n.as_str() {
             "ewf" | "e01" | "s01" => Some(ContainerFormat::Ewf),
             "vpc" => Some(ContainerFormat::Vhd),
+            "udif" => Some(ContainerFormat::Dmg),
             _ => Self::ALL.into_iter().find(|f| f.name() == n),
         }
     }
@@ -186,6 +192,7 @@ fn open_in_chain(
         ContainerFormat::Vmdk => vmdk::open(path)?,
         ContainerFormat::Qcow2 => qcow2::open(path)?,
         ContainerFormat::Ewf => ewf::open(path)?,
+        ContainerFormat::Dmg => dmg::open(path)?,
     };
     let mut notes = opened.notes;
     let mut files: Vec<PathBuf> = opened.files.iter().map(|f| f.path.clone()).collect();
@@ -272,6 +279,11 @@ fn detect_bytes(head: &[u8], tail: &[u8]) -> ContainerFormat {
         ContainerFormat::Vmdk
     } else if starts(ewf::SIGNATURE) || starts(ewf::SIGNATURE_SMART) {
         ContainerFormat::Ewf
+    } else if tail.len() == 512 && tail.starts_with(dmg::TRAILER)
+        || starts(dmg::ENCRYPTED)
+        || starts(dmg::SPARSE)
+    {
+        ContainerFormat::Dmg
     } else if tail.len() == 512 && tail.starts_with(b"conectix") || starts(b"conectix") {
         ContainerFormat::Vhd
     } else {
@@ -593,6 +605,9 @@ mod tests {
         assert_eq!(detect_bytes(b"QFI\xfb\0\0\0\x03", &[]), ContainerFormat::Qcow2);
         assert_eq!(detect_bytes(b"vhdxfile", &[]), ContainerFormat::Vhdx);
         assert_eq!(detect_bytes(b"KDMV\x01\0\0\0", &[]), ContainerFormat::Vmdk);
+        let mut koly = [0u8; 512];
+        koly[..4].copy_from_slice(b"koly");
+        assert_eq!(detect_bytes(&[0u8; 4096], &koly), ContainerFormat::Dmg);
     }
 
     #[test]

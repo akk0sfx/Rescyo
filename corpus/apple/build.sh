@@ -26,7 +26,7 @@ image hfs "HFS+"
 image apfs APFS
 
 # The HFS+ image in every DMG encoding, for the DMG reader.
-for fmt in UDRO UDZO UDBZ ULFO ULMO; do
+for fmt in UDRO UDCO UDZO UDBZ ULFO ULMO; do
     hdiutil convert -quiet "$OUT/hfs.img" -format "$fmt" -o "$OUT/hfs-$fmt.dmg"
 done
 rm -rf "$SRC" "$OUT/mnt"

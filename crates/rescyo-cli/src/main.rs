@@ -75,7 +75,7 @@ struct SourceArgs {
     /// The ddrescue map of an image: its unread areas count as unreadable sectors.
     #[arg(long)]
     map: Option<PathBuf>,
-    /// Format of an image file: auto (detect), raw, vhd, vhdx, vmdk, qcow2 or e01.
+    /// Format of an image file: auto (detect), raw, vhd, vhdx, vmdk, qcow2, e01 or dmg.
     #[arg(long, default_value = "auto")]
     format: String,
 }
