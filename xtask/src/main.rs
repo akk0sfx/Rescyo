@@ -1,6 +1,8 @@
 //! Developer tasks for Rescyo. Run with `cargo xtask <task>`.
 //!
 //! - `corpus [scenario…]`  build the test corpus inside the corpus container (ADR-0002)
+//! - `containers [scenario…]`  wrap the corpus images into VHD/VHDX/VMDK/qcow2/E01 with the
+//!   reference tools (qemu-img, ewfacquire) inside their own container
 //! - `corrupt <scenario> <corruption> <out.img>`  write a damaged copy for manual inspection
 //! - `gate1`  Gate 1: every scenario and corruption through the shipping `rescyo` binary
 #![forbid(unsafe_code)]
@@ -11,11 +13,13 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 
 const IMAGE_TAG: &str = "rescyo-corpus:dev";
+const CONTAINERS_TAG: &str = "rescyo-containers:dev";
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("corpus") => corpus(args.get(1..).unwrap_or_default()),
+        Some("containers") => containers(args.get(1..).unwrap_or_default()),
         Some("gate1") => gate1(),
         Some("corrupt") => match args.get(1..) {
             Some([scenario, corruption, out]) => corrupt(scenario, corruption, Path::new(out)),
@@ -23,7 +27,7 @@ fn main() -> Result<()> {
         },
         _ => {
             eprintln!(
-                "usage: cargo xtask <corpus [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1>"
+                "usage: cargo xtask <corpus [scenario…] | containers [scenario…] | corrupt <scenario> <corruption> <out.img> | gate1>"
             );
             std::process::exit(2);
         }
@@ -77,6 +81,36 @@ fn corpus(only: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// Wraps the built corpus images into virtual-disk containers with qemu-img and ewfacquire,
+/// inside a container that sees only the corpus output directory (ADR-0002).
+fn containers(only: &[String]) -> Result<()> {
+    let root = workspace_root().canonicalize()?;
+    let out = rescyo_testkit::corpus_root();
+    if !out.is_dir() {
+        bail!("no corpus: run `cargo xtask corpus` first");
+    }
+    let out = out.canonicalize()?;
+    let status = Command::new("docker")
+        .args(["build", "--quiet", "--tag", CONTAINERS_TAG])
+        .arg(root.join("corpus/containers"))
+        .status()
+        .context("running docker (is Docker running?)")?;
+    if !status.success() {
+        bail!("docker build failed");
+    }
+    let status = Command::new("docker")
+        .args(["run", "--rm", "--network", "none"])
+        .arg("-v")
+        .arg(format!("{}:/out", out.display()))
+        .arg(CONTAINERS_TAG)
+        .args(only)
+        .status()?;
+    if !status.success() {
+        bail!("wrapping the corpus into containers failed");
+    }
+    Ok(())
+}
+
 /// Writes `<scenario>` with `<corruption>` applied to a new file (never over the original).
 fn corrupt(scenario: &str, corruption: &str, out: &Path) -> Result<()> {
     let s =
@@ -99,7 +133,9 @@ fn corrupt(scenario: &str, corruption: &str, out: &Path) -> Result<()> {
 /// Gate 1 (v0.1): with the real binary, scan each damaged image deeply and recover everything.
 /// Every live file must come back byte for byte, except files whose directory entry the damage
 /// destroyed and files Rescyo itself labelled a contiguous guess after every allocation table
-/// was lost. At least 95% of deleted contiguous files must come back.
+/// was lost. At least 95% of deleted contiguous files must come back on the Tier A file systems
+/// (ADR-0005); experimental ones must recover every live file, and their deleted files are only
+/// reported.
 fn gate1() -> Result<()> {
     let root = workspace_root().canonicalize()?;
     let status = Command::new("cargo")
@@ -176,13 +212,15 @@ fn gate1() -> Result<()> {
                 .filter_map(|f| Some((f.get("sha256")?.as_str()?, f.get("integrity")?.as_str()?)))
                 .collect();
             let root_lost = corruption.split('+').any(|c| c == "root");
+            // Tier B (ADR-0005): ext4 and later HFS+, APFS, Btrfs.
+            let experimental = s.expected.fs == "ext4";
             let mut verified = 0u32;
             let (mut live, mut exact, mut excused) = (0u32, 0u32, 0u32);
             let mut missing = Vec::new();
             for f in &s.expected.files {
                 let name = f.path.rsplit('/').next().unwrap_or(&f.path);
                 if f.state == rescyo_testkit::FileState::Deleted {
-                    if f.size > 0 && f.fragmented != Some(true) {
+                    if f.size > 0 && f.fragmented != Some(true) && !experimental {
                         del_total += 1;
                         del_ok += u64::from(shas.contains(f.sha256.as_str()));
                     }
@@ -209,8 +247,9 @@ fn gate1() -> Result<()> {
             let ok = missing.is_empty();
             failures += u32::from(!ok);
             rows.push(format!(
-                "| {} | {} | {exact}/{live} | {verified} | {excused} | {} |",
+                "| {}{} | {} | {exact}/{live} | {verified} | {excused} | {} |",
                 s.expected.scenario,
+                if experimental { " (experimental)" } else { "" },
                 corruption,
                 if ok {
                     "pass".to_owned()

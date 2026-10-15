@@ -91,6 +91,36 @@ impl Failure {
         f
     }
 
+    /// An image file that cannot be opened: unreadable, damaged beyond its header copies,
+    /// using an unsupported feature, or missing its parent image.
+    pub fn image_open(source: &str, e: &rescyo_io::OpenError) -> Self {
+        use rescyo_io::OpenError;
+        match e {
+            OpenError::Io(io) => Self::source_open(source, io),
+            OpenError::Unsupported { .. } => Self::new(
+                "image_unsupported",
+                format!("cannot open {source}: {e}"),
+                "error-image-unsupported",
+                vec![("source", source.into()), ("reason", e.to_string())],
+                3,
+            ),
+            OpenError::ParentMissing { tried, .. } => Self::new(
+                "parent_image_missing",
+                format!("cannot open {source}: {e}"),
+                "error-parent-missing",
+                vec![("source", source.into()), ("tried", tried.clone())],
+                3,
+            ),
+            OpenError::Invalid { .. } | OpenError::ParentLoop { .. } => Self::new(
+                "image_invalid",
+                format!("cannot open {source}: {e}"),
+                "error-source-open",
+                vec![("source", source.into()), ("reason", e.to_string())],
+                3,
+            ),
+        }
+    }
+
     pub fn source_mismatch(source: &str, reason: &str) -> Self {
         Self::new(
             "source_mismatch",

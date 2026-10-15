@@ -43,6 +43,8 @@ problem-file-too-large = { $path }의 크기는 { $size }로 대상 파일 시�
 problem-nothing-selected = 선택 조건에 맞는 항목이 없습니다.
 
 error-source-open = { $source }을(를) 열 수 없습니다: { $reason }
+error-image-unsupported = { $source }을(를) 열 수 없습니다: { $reason }. raw 이미지로 변환한 뒤(예: qemu-img) 여세요.
+error-parent-missing = { $source }은(는) 차등 이미지인데 부모 이미지를 찾을 수 없습니다(시도한 경로: { $tried }). 부모 이미지를 같은 위치에 두세요.
 error-source-mismatch = { $source }은(는) 이 세션을 만든 원본이 아닙니다({ $reason }). 확실한 경우에만 --force-rebind를 사용하십시오.
 error-session-exists = { $path }이(가) 이미 있습니다. Rescyo는 세션을 덮어쓰지 않습니다. 다른 파일 이름을 지정하십시오.
 error-session-invalid = { $path }은(는) Rescyo 세션이 아닙니다: { $reason }
@@ -59,6 +61,8 @@ hint-admin = 디스크를 읽으려면 Windows에서는 관리자 권한, Linux�
 
 ## Imaging
 image-start = { $source }의 이미지를 { $image }에 만드는 중(맵: { $map })…
+container-opened = { $format } 이미지: 가상 디스크 { $size }, 파일 { $files }개.
+container-note = 이미지 참고: { $note }
 phase-image-copy = 복사
 phase-image-trim = 불량 영역 다듬기
 phase-image-scrape = 불량 영역 섹터별 읽기
@@ -87,3 +91,51 @@ partition-boot-primary = 부트 섹터
 partition-boot-backup = 백업 부트 섹터만
 partition-boot-none = 부트 섹터 없음
 partition-unpartitioned = 파티션 테이블 없음: 디스크 전체가 하나의 볼륨, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = 볼륨 { $id }: 시그니처로 파일 { $files }개 발견(유형별 폴더에 정리, 복구할 때 내용을 검사)
+
+## Terminal interface
+tui-step-source = 소스
+tui-step-scan = 스캔
+tui-step-browse = 탐색
+tui-step-recover = 복구
+tui-search = 파일 { $count }개에서 검색…(/)
+tui-fact-cluster = 클러스터
+tui-fact-data = 데이터 시작
+tui-fact-folders = 폴더
+tui-fact-files = 파일
+tui-col-name = 이름
+tui-col-size = 크기
+tui-col-modified = 수정 시간
+tui-col-assembly = 조립 방식
+tui-col-integrity = 무결성
+tui-intact = 정상
+tui-partial = 일부
+tui-damaged = 손상
+tui-unverified = 확인 안 됨
+tui-empty = 파일이 없습니다.
+tui-insp-runs = 조각
+tui-insp-state = 상태
+tui-insp-kind = 종류
+tui-deleted = 삭제됨
+tui-live = 있음
+tui-stream = 명명된 스트림
+tui-note-lost = 부모를 잃은 폴더 { $count }개는 _LOST_FOLDERS 아래에 있습니다.
+tui-scanning = { $source } 스캔 중
+tui-recover-to = 복구 위치
+tui-no-target = T를 눌러 다른 디스크의 폴더를 선택하세요
+tui-preflight-ok = 사전 점검: 다른 장치 · 여유 공간 { $free } · 이름 정상
+tui-preflight-problems = 문제 { $count }개: { $first }
+tui-recover-button = R  파일 { $count }개 복구
+tui-input-target = 복구할 폴더
+tui-input-hint = 다른 디스크에 있는 폴더. Enter로 확인, Esc로 취소.
+tui-running = 복구 중… { $done } / { $total } (Esc로 중지)
+tui-cancelled = 중지했습니다. 이미 기록된 파일은 완전하며 보고서에 나와 있습니다.
+tui-source-changed = 소스가 이 세션과 더 이상 일치하지 않습니다. 확실하다면 명령줄에서 --force-rebind를 사용하세요.
+tui-help-title = 키
+tui-help =
+    ↑ ↓ 또는 j k      이동          Tab        폴더와 파일 전환
+    → ← 또는 Enter    열기, 닫기    Space      파일 표시    a   여기 모두 표시
+    /                 검색          d          삭제된 파일 표시/숨기기
+    s                 명명된 스트림  t         대상 폴더 선택
+    r                 복구          q 또는 Esc 종료
+tui-keys =  Tab 패널 · Space 표시 · / 검색 · d 삭제됨 · t 대상 · r 복구 · ? 도움말 · q 종료

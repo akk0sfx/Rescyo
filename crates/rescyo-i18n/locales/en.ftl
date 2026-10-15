@@ -70,6 +70,8 @@ problem-file-too-large = { $path } is { $size }, larger than the target file sys
 problem-nothing-selected = Nothing matches the selection.
 
 error-source-open = Cannot open { $source }: { $reason }
+error-image-unsupported = Cannot open { $source }: { $reason }. Convert it to a raw image (for example with qemu-img) and open that.
+error-parent-missing = { $source } is a differencing image and its parent was not found (tried: { $tried }). Put the parent image next to it.
 error-source-mismatch = { $source } is not the source this session was made from ({ $reason }). Use --force-rebind only if you are sure.
 error-session-exists = { $path } already exists. Rescyo never overwrites a session; choose another file name.
 error-session-invalid = { $path } is not a Rescyo session: { $reason }
@@ -86,6 +88,8 @@ hint-admin = Reading disks needs administrator rights on Windows or sudo on Linu
 
 ## Imaging
 image-start = Imaging { $source } to { $image } (map: { $map })…
+container-opened = { $format } image: virtual disk of { $size } in { $files } file(s).
+container-note = Image note: { $note }
 phase-image-copy = Copying
 phase-image-trim = Trimming bad areas
 phase-image-scrape = Scraping bad areas
@@ -117,3 +121,54 @@ partition-boot-primary = boot sector
 partition-boot-backup = backup boot sector only
 partition-boot-none = no boot sector
 partition-unpartitioned = No partition table: the whole disk is one volume, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = Volume { $id }: { $files ->
+        [one] 1 file
+       *[other] { $files } files
+    } carved by their signatures (in folders by type; their content is checked on recovery)
+
+## Terminal interface
+tui-step-source = Source
+tui-step-scan = Scan
+tui-step-browse = Browse
+tui-step-recover = Recover
+tui-search = Search { $count } files…  (/)
+tui-fact-cluster = cluster
+tui-fact-data = data at
+tui-fact-folders = folders
+tui-fact-files = files
+tui-col-name = Name
+tui-col-size = Size
+tui-col-modified = Modified
+tui-col-assembly = Assembly
+tui-col-integrity = Integrity
+tui-intact = Intact
+tui-partial = Partial
+tui-damaged = Damaged
+tui-unverified = Unverified
+tui-empty = No files here.
+tui-insp-runs = Fragments
+tui-insp-state = State
+tui-insp-kind = Kind
+tui-deleted = deleted
+tui-live = present
+tui-stream = named stream
+tui-note-lost = { $count } folders whose parent is lost are under _LOST_FOLDERS.
+tui-scanning = Scanning { $source }
+tui-recover-to = Recover to
+tui-no-target = press T to choose a folder on another disk
+tui-preflight-ok = Preflight: different device · { $free } free · names OK
+tui-preflight-problems = { $count } problems: { $first }
+tui-recover-button = R  Recover { $count } files
+tui-input-target = Recover to folder
+tui-input-hint = A folder on a different disk. Enter to confirm, Esc to cancel.
+tui-running = Recovering… { $done } of { $total }  (Esc stops)
+tui-cancelled = Stopped. Files already written are complete and listed in the report.
+tui-source-changed = The source no longer matches this session. Use the command line with --force-rebind if you are sure.
+tui-help-title = Keys
+tui-help =
+    ↑ ↓ or j k      move          Tab        switch between folders and files
+    → ← or Enter    open, close    Space      mark a file    a   mark all here
+    /               search         d          show or hide deleted files
+    s               named streams  t          choose the target folder
+    r               recover        q or Esc   quit
+tui-keys =  Tab panes · Space mark · / search · d deleted · t target · r recover · ? help · q quit

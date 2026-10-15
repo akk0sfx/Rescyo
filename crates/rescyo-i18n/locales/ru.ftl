@@ -78,6 +78,8 @@ problem-file-too-large = { $path } весит { $size } — больше, чем
 problem-nothing-selected = Под выбор ничего не попало.
 
 error-source-open = Не удалось открыть { $source }: { $reason }
+error-image-unsupported = Не удалось открыть { $source }: { $reason }. Преобразуйте его в сырой образ (например, через qemu-img) и откройте его.
+error-parent-missing = { $source } — разностный образ, а его родительский образ не найден (искал: { $tried }). Положите родительский образ рядом.
 error-source-mismatch = { $source } — не тот источник, по которому сделана сессия ({ $reason }). Используйте --force-rebind, только если уверены.
 error-session-exists = { $path } уже существует. Rescyo никогда не перезаписывает сессию; выберите другое имя файла.
 error-session-invalid = { $path } — не сессия Rescyo: { $reason }
@@ -94,6 +96,8 @@ hint-admin = Для чтения дисков нужны права админи
 
 ## Imaging
 image-start = Снимаю образ { $source } в { $image } (карта: { $map })…
+container-opened = Образ { $format }: виртуальный диск { $size }, файлов: { $files }.
+container-note = Замечание об образе: { $note }
 phase-image-copy = Копирование
 phase-image-trim = Обрезка плохих зон
 phase-image-scrape = Дочитка плохих зон
@@ -126,3 +130,55 @@ partition-boot-primary = загрузочный сектор
 partition-boot-backup = только резервная копия загрузочного сектора
 partition-boot-none = нет загрузочного сектора
 partition-unpartitioned = Таблицы разделов нет: весь диск — один том, { $fs }{ $label }, { $size } ({ $boot })
+scan-carved = Том { $id }: { $files ->
+        [one] { $files } файл найден
+        [few] { $files } файла найдено
+       *[many] { $files } файлов найдено
+    } по сигнатурам (в папках по типу; содержимое проверяется при восстановлении)
+
+## Terminal interface
+tui-step-source = Источник
+tui-step-scan = Скан
+tui-step-browse = Обзор
+tui-step-recover = Восстановление
+tui-search = Поиск среди { $count } файлов…  (/)
+tui-fact-cluster = кластер
+tui-fact-data = данные с
+tui-fact-folders = папок
+tui-fact-files = файлов
+tui-col-name = Имя
+tui-col-size = Размер
+tui-col-modified = Изменён
+tui-col-assembly = Сборка
+tui-col-integrity = Целостность
+tui-intact = Цел
+tui-partial = Частично
+tui-damaged = Повреждён
+tui-unverified = Не проверен
+tui-empty = Здесь нет файлов.
+tui-insp-runs = Фрагментов
+tui-insp-state = Состояние
+tui-insp-kind = Тип
+tui-deleted = удалён
+tui-live = на месте
+tui-stream = именованный поток
+tui-note-lost = Папок без родителя: { $count }, они в _LOST_FOLDERS.
+tui-scanning = Сканирую { $source }
+tui-recover-to = Восстановить в
+tui-no-target = нажмите T и выберите папку на другом диске
+tui-preflight-ok = Проверка: другой диск · свободно { $free } · имена в порядке
+tui-preflight-problems = Проблем: { $count }. { $first }
+tui-recover-button = R  Восстановить файлов: { $count }
+tui-input-target = Папка для восстановления
+tui-input-hint = Папка на другом диске. Enter — подтвердить, Esc — отмена.
+tui-running = Восстанавливаю… { $done } из { $total }  (Esc — остановить)
+tui-cancelled = Остановлено. Уже записанные файлы целы и перечислены в отчёте.
+tui-source-changed = Источник больше не совпадает с этой сессией. Если вы уверены, воспользуйтесь командной строкой с --force-rebind.
+tui-help-title = Клавиши
+tui-help =
+    ↑ ↓ или j k      перемещение       Tab        папки или файлы
+    → ← или Enter    открыть, закрыть  Пробел     отметить файл   a   отметить все здесь
+    /                поиск             d          показать или скрыть удалённые
+    s                именованные потоки  t        выбрать папку для восстановления
+    r                восстановить      q или Esc  выход
+tui-keys =  Tab панели · Пробел отметить · / поиск · d удалённые · t папка · r восстановить · ? справка · q выход

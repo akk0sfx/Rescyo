@@ -70,6 +70,8 @@ pub struct Selection {
     pub volume: Option<i64>,
     /// Include named data streams (NTFS alternate data streams).
     pub streams: bool,
+    /// Only these entries (empty means every entry the other filters let through).
+    pub ids: Vec<u64>,
 }
 
 impl Selection {
@@ -91,7 +93,8 @@ impl Selection {
             .is_none_or(|p| path.starts_with(p.trim_start_matches('/')));
         let vol_ok = self.volume.is_none_or(|v| v == e.volume);
         let kind_ok = self.streams || e.entry.kind != EntryKind::Stream;
-        state_ok && ext_ok && prefix_ok && vol_ok && kind_ok
+        let id_ok = self.ids.is_empty() || self.ids.contains(&e.id.0);
+        state_ok && ext_ok && prefix_ok && vol_ok && kind_ok && id_ok
     }
 }
 

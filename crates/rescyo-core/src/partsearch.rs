@@ -70,7 +70,8 @@ impl BootScanner {
             if self.hits.len() >= MAX_HITS {
                 return;
             }
-            if s[510] != 0x55 || s[511] != 0xAA || !looks_like_boot(s) {
+            let boot = s[510] == 0x55 && s[511] == 0xAA && looks_like_boot(s);
+            if !boot && !is_ext_superblock(s) {
                 continue;
             }
             self.hits.push((at + (skip + i * SECTOR) as u64, Box::new(*s)));
@@ -129,8 +130,29 @@ fn looks_like_boot(s: &[u8; SECTOR]) -> bool {
     matches!(&s[3..11], b"NTFS    " | b"EXFAT   ") || s[0] == 0xEB || s[0] == 0xE9
 }
 
+/// The first half of an ext2/3/4 superblock (everything the search needs lies in it).
+fn is_ext_superblock(s: &[u8; SECTOR]) -> bool {
+    s[56] == 0x53 && s[57] == 0xEF && rescyo_ext4::parse_superblock(s, 0).is_some()
+}
+
 /// Where a volume starts if `s` (at `at`) is its primary boot sector, or one of its backups.
 fn hypotheses(s: &[u8; SECTOR], at: u64) -> Vec<(u64, bool)> {
+    if is_ext_superblock(s) {
+        // A superblock names the block group it sits in: 0 for the primary (1 KiB into the
+        // volume), the group's first block for a backup.
+        let Some(g) = rescyo_ext4::parse_superblock(s, 0) else {
+            return Vec::new();
+        };
+        let group = rescyo_ext4::superblock_group(s).unwrap_or(0);
+        let start = if group == 0 {
+            at.checked_sub(rescyo_ext4::SB_OFFSET)
+        } else {
+            (group * u64::from(g.blocks_per_group) + u64::from(g.first_data_block))
+                .checked_mul(u64::from(g.block_size))
+                .and_then(|n| at.checked_sub(n))
+        };
+        return start.map(|st| vec![(st, group != 0)]).unwrap_or_default();
+    }
     let mut h = vec![(at, false)];
     let bps = u64::from(u16_at(s, 11).unwrap_or(0));
     match &s[3..11] {
@@ -168,10 +190,22 @@ struct Volume {
     label: Option<String>,
     fat: Option<FatGeometry>,
     ntfs: Option<rescyo_ntfs::NtfsGeometry>,
+    ext4: Option<rescyo_ext4::Ext4Geometry>,
 }
 
 /// The volume `s` describes if it starts at `start`.
 fn volume(s: &[u8; SECTOR], start: u64) -> Option<Volume> {
+    if is_ext_superblock(s) {
+        let g = rescyo_ext4::parse_superblock(s, start)?;
+        return Some(Volume {
+            fs: FsKind::Ext4,
+            size: g.size(),
+            label: g.label.clone(),
+            fat: None,
+            ntfs: None,
+            ext4: Some(g),
+        });
+    }
     if let Some(g) = rescyo_ntfs::parse_boot(s, start) {
         return Some(Volume {
             fs: FsKind::Ntfs,
@@ -179,6 +213,7 @@ fn volume(s: &[u8; SECTOR], start: u64) -> Option<Volume> {
             label: None,
             fat: None,
             ntfs: Some(g),
+            ext4: None,
         });
     }
     if let Some(g) = parse_exfat_boot(s, start) {
@@ -189,6 +224,7 @@ fn volume(s: &[u8; SECTOR], start: u64) -> Option<Volume> {
             label: None,
             fat: Some(g),
             ntfs: None,
+            ext4: None,
         });
     }
     let g = parse_fat_boot(s, start)?;
@@ -203,6 +239,7 @@ fn volume(s: &[u8; SECTOR], start: u64) -> Option<Volume> {
         label: g.label.clone(),
         fat: Some(g),
         ntfs: None,
+        ext4: None,
     })
 }
 
@@ -238,6 +275,9 @@ impl Volume {
                 }
             }
             return Ok(false);
+        }
+        if let Some(g) = &self.ext4 {
+            return rescyo_ext4::root_ok(r, g);
         }
         if let Some(g) = &self.ntfs {
             for at in [Some(g.mft_offset), g.mftmirr_offset].into_iter().flatten() {

@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha%20v0.2-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.3-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#platforms)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 [![unsafe](https://img.shields.io/badge/unsafe-forbidden%20in%20parsers-14965F)](CONTRIBUTING.md#safety-rules)
@@ -26,7 +26,7 @@ Rescyo brings back files from damaged, formatted or partially unreadable disks, 
 Free open-source alternative to DMDE, R-Studio and UFS Explorer.
 
 > [!IMPORTANT]
-> **Alpha (v0.2).** The command line recovers FAT, exFAT and NTFS (including compressed files and alternate data streams), images failing disks with a ddrescue-compatible map and finds lost partitions; it passes its byte-for-byte test gate, but there are no signed binaries yet. Always recover to a different disk, and image a failing disk before anything else.
+> **Alpha (v0.3).** The command line recovers FAT, exFAT and NTFS (including compressed files and alternate data streams), images failing disks with a ddrescue-compatible map and finds lost partitions; it passes its byte-for-byte test gate, but there are no signed binaries yet. Always recover to a different disk, and image a failing disk before anything else. Since v0.3 it also reads VHD, VHDX, VMDK, qcow2 and E01 images, carves files by their signatures, reads ext4 (experimental) and has a terminal interface.
 
 ## Why Rescyo
 
@@ -92,6 +92,7 @@ rescyo disks --json                              # list disks
 rescyo scan /dev/sdb --session flash.db          # find volumes and folders (read-only)
 rescyo image /dev/sdb --to /mnt/backup/flash.img  # failing disk: image it first (resumable)
 rescyo partitions /dev/sdb                       # find partitions missing from the table
+rescyo tui flash.db                              # browse and recover in the terminal
 rescyo scan /dev/sdb --session flash.db --deep   # also look for lost volumes and folders
 rescyo ls flash.db --deleted --ext jpg,docx      # browse what was found
 rescyo recover flash.db --to /mnt/backup/flash   # copy out, with a SHA-256 report
@@ -129,7 +130,8 @@ A **Scan** finds volume candidates (partition tables, boot sectors and their bac
 | FAT12, FAT16, FAT32 | Full: lost volumes, folder trees, deleted files | v0.1 |
 | exFAT | Full | v0.1 |
 | NTFS | Full: MFT, deleted files, sparse files; compressed (LZNT1) and WOF-compressed (XPRESS, LZX) files and alternate data streams since v0.2 | v0.1 |
-| ext4, HFS+, APFS, Btrfs | Experimental: intact read and deleted files where metadata remains | v0.3–v0.4 |
+| ext2, ext3, ext4 | Experimental: intact read; deleted files where metadata remains (recent Linux wipes it: use carving) | v0.3 |
+| HFS+, APFS, Btrfs | Experimental | v0.4 |
 | ReFS | Planned | v2 |
 
 ## Platforms

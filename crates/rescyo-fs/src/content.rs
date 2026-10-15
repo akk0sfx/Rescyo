@@ -207,7 +207,13 @@ impl Stored<'_> {
                 Extent::Zero { .. } => dst.fill(0),
                 Extent::Inline { data } => {
                     let w = usize::try_from(within).unwrap_or(0);
-                    dst.copy_from_slice(data.get(w..w + n).unwrap_or_default());
+                    match data.get(w..w + n) {
+                        Some(src) => dst.copy_from_slice(src),
+                        None => {
+                            dst.fill(0);
+                            clean = false;
+                        }
+                    }
                 }
                 Extent::Encoded { .. } => {
                     dst.fill(0);

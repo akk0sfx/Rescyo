@@ -15,6 +15,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3bc62ac97cc33321f50863d514c3bc38a453947a8f9e781137e47c7401020aed"
 
 [[package]]
+name = "bitflags"
+version = "2.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
+
+[[package]]
 name = "block-buffer"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -106,6 +112,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "errno"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
+dependencies = [
+ "libc",
+ "windows-sys",
+]
+
+[[package]]
+name = "fastrand"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -164,6 +186,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -183,6 +211,12 @@ name = "multiversion_no_op"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
+
+[[package]]
+name = "once_cell"
+version = "1.21.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "proc-macro2"
@@ -209,20 +243,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "rescyo-carve"
+version = "0.3.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "thiserror",
+]
+
+[[package]]
 name = "rescyo-codec"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "rescyo-dmde"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "rescyo-fs",
  "thiserror",
 ]
 
 [[package]]
+name = "rescyo-ext4"
+version = "0.3.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "rescyo-fat"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -233,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-fs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "encoding_rs",
  "rescyo-codec",
@@ -248,21 +302,25 @@ name = "rescyo-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
+ "rescyo-carve",
  "rescyo-codec",
  "rescyo-dmde",
+ "rescyo-ext4",
  "rescyo-fat",
  "rescyo-fs",
  "rescyo-io",
  "rescyo-ntfs",
  "rescyo-part",
  "rescyo-verify",
+ "tempfile",
 ]
 
 [[package]]
 name = "rescyo-io"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libc",
+ "miniz_oxide",
  "sha2",
  "thiserror",
  "windows-sys",
@@ -270,7 +328,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-ntfs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "rescyo-fs",
  "rescyo-io",
@@ -281,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "rescyo-part"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crc32fast",
  "rescyo-io",
@@ -290,12 +348,25 @@ dependencies = [
 
 [[package]]
 name = "rescyo-verify"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
  "zune-core",
  "zune-jpeg",
+]
+
+[[package]]
+name = "rustix"
+version = "1.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys",
 ]
 
 [[package]]
@@ -385,6 +456,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom",
+ "once_cell",
+ "rustix",
+ "windows-sys",
 ]
 
 [[package]]
