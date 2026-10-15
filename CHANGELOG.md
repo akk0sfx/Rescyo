@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **Apple disk images (DMG)** as sources: raw (UDRO/UDRW) and compressed with ADC (UDCO), zlib (UDZO), bzip2 (UDBZ), LZFSE (ULFO) or LZMA (ULMO). The decoders are Rescyo's own, safe and bounded; a chunk that fails to decode makes only its sectors unreadable. Encrypted, segmented and sparse images are recognised and reported as unsupported.
+
 ## [0.3.0] — 2026-10-12
 
 Third alpha: open the disk images people actually have, find files by their structure when nothing else describes them, read ext4, and work in a terminal.

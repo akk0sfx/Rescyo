@@ -1241,6 +1241,7 @@ version = "0.3.0"
 dependencies = [
  "libc",
  "miniz_oxide",
+ "rescyo-codec",
  "sha2",
  "tempfile",
  "thiserror",

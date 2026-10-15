@@ -45,7 +45,7 @@ The ddrescue mapfile kept next to an image, saying for every byte range whether 
 _Avoid_: log file
 
 **Container**:
-An image file that stores a virtual disk through tables rather than byte for byte: VHD, VHDX, VMDK, qcow2 or E01. Rescyo reads the virtual disk it describes; damage inside a Container makes only the affected ranges unreadable.
+An image file that stores a virtual disk through tables rather than byte for byte: VHD, VHDX, VMDK, qcow2, E01 or DMG. Rescyo reads the virtual disk it describes; damage inside a Container makes only the affected ranges unreadable.
 _Avoid_: virtual disk file, VM image (in user-facing text, name the format)
 
 **Parent image**:
