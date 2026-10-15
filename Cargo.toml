@@ -28,6 +28,7 @@ rescyo-verify = { path = "crates/rescyo-verify" }
 rescyo-codec = { path = "crates/rescyo-codec" }
 rescyo-carve = { path = "crates/rescyo-carve" }
 rescyo-ext4 = { path = "crates/rescyo-ext4" }
+rescyo-hfs = { path = "crates/rescyo-hfs" }
 rescyo-design = { path = "crates/rescyo-design" }
 rescyo-tui = { path = "crates/rescyo-tui" }
 

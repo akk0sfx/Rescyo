@@ -64,6 +64,19 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo test --workspace --locked
 
+  apple:
+    # HFS+, APFS and DMG images made by macOS itself on this disposable runner, then read by
+    # the engines (the images never exist on a developer machine unless its owner agrees).
+    name: apple images (macos-latest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: corpus/apple/build.sh "$RUNNER_TEMP/apple"
+      - run: cargo test --locked -p rescyo-hfs -p rescyo-io
+        env:
+          RESCYO_APPLE_IMAGES: ${{ runner.temp }}/apple
+
   deny:
     name: cargo-deny
     runs-on: ubuntu-latest
@@ -79,10 +92,11 @@ jobs:
       - name: Forbid disk-mutating host commands outside the corpus container
         run: |
           # Scripts that run on a developer's host must never touch block devices (ADR-0002).
-          # Only corpus/container/ (executed inside Docker) and CI-only workflow steps may use them.
+          # Only corpus/container/ (executed inside Docker), corpus/apple/ (hdiutil on file-backed
+          # images it creates itself, never a device) and CI-only workflow steps may use them.
           pattern='\b(hdiutil|diskutil|losetup|mkfs(\.[a-z0-9]+)?|newfs_[a-z]+|mount|dd)\b'
           hits=$(git ls-files 'scripts/**' 'xtask/**' 'corpus/**' '*.sh' '*.ps1' \
-                   | grep -v '^corpus/container/' \
+                   | grep -v '^corpus/container/' | grep -v '^corpus/apple/' \
                    | xargs -r grep -nE "$pattern" || true)
           if [ -n "$hits" ]; then echo "$hits"; exit 1; fi
 
