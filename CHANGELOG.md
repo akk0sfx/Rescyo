@@ -4,13 +4,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **HFS+ and HFSX (experimental)**: volume header or its backup, the catalog B-tree, data forks with the extents overflow file, decomposed names composed; deleted catalog records are looked for in node free space (macOS wipes them, so on macOS-written volumes deleted files come back by carving). Partition search finds HFS+ volumes by either header. Tested on images made by macOS itself (`corpus/apple`).
+
 ## [0.3.0] — 2026-10-12
 
 Third alpha: open the disk images people actually have, find files by their structure when nothing else describes them, read ext4, and work in a terminal.
 
 ### Added
 
-- **HFS+ and HFSX (experimental)**: volume header or its backup, the catalog B-tree, data forks with the extents overflow file, decomposed names composed; deleted catalog records are looked for in node free space (macOS wipes them, so on macOS-written volumes deleted files come back by carving). Partition search finds HFS+ volumes by either header. Tested on images made by macOS itself (`corpus/apple`).
 - **Terminal interface**: `rescyo tui SESSION` browses a session (folder tree, files with their assembly and integrity, inspector) and recovers marked files or whole folders through the same preflight; `rescyo tui SOURCE --session NEW [--deep] [--carve]` scans with a live sector strip first. Same flow and design tokens as the coming GUI, 24-bit or 256 colours, `NO_COLOR` respected, five languages; works over SSH and on live-USB consoles.
 - **Virtual-disk containers as sources**: VHD (fixed, dynamic, differencing), VHDX (dynamic, fixed, differencing; an unreplayed log is replayed in memory only), VMDK (sparse, stream-optimized, flat and split descriptors, delta disks), qcow2 v2/v3 (compressed clusters, backing files) and EnCase/SMART E01/S01 evidence sets (all segments, Adler-32 and table mirrors) open directly, detected by signature or chosen with `--format`. Damage inside a container (a table entry outside its file, a chunk that fails its checksum or does not decompress) makes only that range unreadable; header copies, redundant grain directories and table mirrors are used when the primary is damaged. `rescyo image` converts any of them to a raw image. Checked against files written by qemu-img and ewfacquire (`cargo xtask containers`).
 - **File carving**: `scan --deep --carve` finds JPEG, PNG, GIF, PDF, ZIP-based documents (docx, xlsx, pptx, odt, epub…), MP4/MOV/HEIF, WAV/AVI/WEBP and BMP files by their own structure where no file system describes them, follows each to its real end (never a guessed length), and keeps them in a separate `carved` volume, one folder per type; recovery verifies their content like any other file.
