@@ -31,6 +31,11 @@ slint = { version = "1.18.1", default-features = false, features = [
 raw-window-handle = "0.6.2"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal", "wayland"] }
 
+# fontconfig is opened at run time (RUST_FONTCONFIG_DLOPEN in .cargo/config.toml), so the GUI
+# builds without its headers and runs on systems without it; fontique must use the same mode.
+[target.'cfg(target_os = "linux")'.dependencies]
+fontique = { version = "0.11.1", default-features = false, features = ["fontconfig-dlopen"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 slint = { version = "1.18.1", default-features = false, features = ["renderer-femtovg"] }
 objc2 = "0.6.5"

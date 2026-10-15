@@ -72,8 +72,8 @@ jobs:
             $exe = "target/${{ matrix.target }}/release/$name"
             $imports = & $dumpbin.FullName /imports $exe | Out-String
             $bad = [regex]::Matches($imports, 'api-ms-win-core-synch-l1-2-0|api-ms-win-core-path|api-ms-win-shcore|ProcessPrng|bcryptprimitives|GetDpiForWindow|GetDpiForMonitor|SetProcessDpiAwarenessContext|AdjustWindowRectExForDpi|GetSystemMetricsForDpi|EnableNonClientDpiScaling') | ForEach-Object { $_.Value } | Sort-Object -Unique
-            if ($bad) { Write-Host "::error::$name has Windows 8+ static imports: $bad"; $failed = $true }
-            else { Write-Host "$name: no Windows 8+ static imports" }
+            if ($bad) { Write-Host "::error::${name} has Windows 8+ static imports: $bad"; $failed = $true }
+            else { Write-Host "${name}: no Windows 8+ static imports" }
           }
           if ($failed) { exit 1 }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
