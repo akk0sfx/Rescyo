@@ -4278,6 +4278,7 @@ dependencies = [
  "rescyo-ext4",
  "rescyo-fat",
  "rescyo-fs",
+ "rescyo-hfs",
  "rescyo-io",
  "rescyo-ntfs",
  "rescyo-part",
@@ -4365,6 +4366,19 @@ dependencies = [
  "rfd",
  "slint",
  "slint-build",
+]
+
+[[package]]
+name = "rescyo-hfs"
+version = "0.3.0"
+dependencies = [
+ "rescyo-fs",
+ "rescyo-io",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "unicode-normalization",
 ]
 
 [[package]]

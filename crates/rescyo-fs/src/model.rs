@@ -15,6 +15,8 @@ pub enum FsKind {
     Ntfs,
     /// ext2, ext3 or ext4 (experimental, ADR-0005).
     Ext4,
+    /// HFS+ or HFSX (experimental, ADR-0005).
+    HfsPlus,
     /// Not a file system: files carved by their own structure, gathered as one pseudo-volume.
     Carved,
 }
@@ -28,6 +30,7 @@ impl FsKind {
             Self::Exfat => "exfat",
             Self::Ntfs => "ntfs",
             Self::Ext4 => "ext4",
+            Self::HfsPlus => "hfsplus",
             Self::Carved => "carved",
         }
     }
@@ -157,6 +160,8 @@ pub enum AssemblyMethod {
     Ext4Extents,
     /// ext2/ext3 block map (direct and indirect blocks).
     BlockMap,
+    /// HFS+ fork extents (from the catalog record and the extents overflow file).
+    HfsExtents,
     ContiguousAssumed,
     Carved,
 }
@@ -170,6 +175,7 @@ impl AssemblyMethod {
             Self::MftRunlist => "mft_runlist",
             Self::Ext4Extents => "ext4_extents",
             Self::BlockMap => "block_map",
+            Self::HfsExtents => "hfs_extents",
             Self::ContiguousAssumed => "contiguous_assumed",
             Self::Carved => "carved",
         }

@@ -245,7 +245,7 @@ pub fn assembly_chip(a: rescyo_fs::AssemblyMethod) -> (&'static str, u8) {
         A::FatChainMirror => ("MIRROR FAT", 1),
         A::ExfatBitmapContiguous => ("EXFAT", 0),
         A::MftRunlist => ("MFT", 0),
-        A::Ext4Extents => ("EXTENTS", 0),
+        A::Ext4Extents | A::HfsExtents => ("EXTENTS", 0),
         A::BlockMap => ("BLOCK MAP", 0),
         A::ContiguousAssumed => ("CONTIGUOUS?", 2),
         A::Carved => ("CARVED", 3),
