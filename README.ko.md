@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/akk0sfx/Rescyo/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/akk0sfx/Rescyo/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-2F6FEB)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha%20v0.2-FF5A1F)](docs/roadmap.md)
+[![Status](https://img.shields.io/badge/status-alpha%20v0.3-FF5A1F)](docs/roadmap.md)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%207%E2%80%9311%20%C2%B7%20Linux%20%C2%B7%20macOS-3A3B4A)](#지원-플랫폼)
 [![Rust](https://img.shields.io/badge/Rust-1.99-1B1B22?logo=rust)](rust-toolchain.toml)
 
@@ -27,7 +27,7 @@ Rescyo는 손상되었거나 포맷되었거나 일부를 읽을 수 없는 디�
 DMDE, R-Studio, UFS Explorer의 무료 오픈 소스 대안입니다.
 
 > [!IMPORTANT]
-> **알파(v0.2).** 명령줄로 FAT, exFAT, NTFS(압축 파일과 대체 데이터 스트림 포함)를 복구하고, 고장 나는 디스크를 ddrescue 호환 맵과 함께 이미지로 만들며, 손실된 파티션을 찾을 수 있습니다. 바이트 단위 복구 테스트를 통과했지만 서명된 바이너리는 아직 없습니다. 항상 다른 디스크로 복구하고, 고장 나는 디스크는 먼저 이미지를 만드십시오.
+> **알파(v0.3).** 명령줄로 FAT, exFAT, NTFS(압축 파일과 대체 데이터 스트림 포함)를 복구하고, 고장 나는 디스크를 ddrescue 호환 맵과 함께 이미지로 만들며, 손실된 파티션을 찾을 수 있습니다. 바이트 단위 복구 테스트를 통과했지만 서명된 바이너리는 아직 없습니다. 항상 다른 디스크로 복구하고, 고장 나는 디스크는 먼저 이미지를 만드십시오. v0.3부터 VHD, VHDX, VMDK, qcow2, E01 이미지를 읽고, 시그니처로 파일을 찾고, ext4를 읽으며(실험적), 터미널 인터페이스도 제공합니다.
 
 ## Rescyo를 쓰는 이유
 
@@ -79,6 +79,7 @@ rescyo disks --json                              # 디스크 목록
 rescyo scan /dev/sdb --session flash.db          # 볼륨과 폴더 찾기(읽기 전용)
 rescyo image /dev/sdb --to /mnt/backup/flash.img  # 고장 나는 디스크: 먼저 이미지 만들기(이어서 가능)
 rescyo partitions /dev/sdb                       # 테이블에 없는 파티션 찾기
+rescyo tui flash.db                              # 터미널에서 탐색 및 복구
 rescyo ls flash.db --deleted --ext jpg,docx      # 찾은 항목 보기
 rescyo recover flash.db --to /mnt/backup/flash   # SHA-256 보고서와 함께 복사
 ```
@@ -101,7 +102,8 @@ flowchart LR
 | FAT12, FAT16, FAT32 | 전체: 손실된 볼륨, 폴더 트리, 삭제된 파일 | v0.1 |
 | exFAT | 전체 | v0.1 |
 | NTFS | 전체: MFT, 삭제된 파일, 스파스 파일. 압축(LZNT1)·WOF 압축(XPRESS, LZX) 파일과 대체 데이터 스트림은 v0.2부터 | v0.1 |
-| ext4, HFS+, APFS, Btrfs | 실험적 | v0.3–v0.4 |
+| ext2, ext3, ext4 | 실험적 | v0.3 |
+| HFS+, APFS, Btrfs | 실험적 | v0.4 |
 
 ## 지원 플랫폼
 
