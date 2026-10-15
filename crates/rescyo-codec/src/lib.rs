@@ -1,20 +1,26 @@
-//! Decoders for the compression Windows applies inside NTFS.
+//! Decoders for the compression file systems and disk images apply.
 //!
 //! - [`lznt1`]: classic NTFS compression (the "compress contents" attribute).
 //! - [`xpress`]: XPRESS Huffman, used by WOF (`compact /exe:xpress4k|8k|16k`).
 //! - [`lzx`]: LZX as used by WOF and WIM (`compact /exe:lzx`).
 //! - [`wof`]: the chunk table WOF puts in front of the compressed chunks.
+//! - [`adc`], [`bzip2`], [`lzfse`] (with LZVN) and [`xz`] (LZMA2): the chunk codecs of Apple
+//!   disk images (UDCO, UDBZ, ULFO, ULMO).
 //!
 //! Written from the public specifications ([MS-XCA] for LZNT1 and XPRESS Huffman, [MS-PATCH]
-//! for LZX). Every input is hostile: output is bounded by the caller's expected size, every read
+//! for LZX), the published bitstream formats for the Apple and xz codecs. Every input is hostile: output is bounded by the caller's expected size, every read
 //! is bounds-checked, and a malformed stream is an error, never a panic.
 #![forbid(unsafe_code)]
 
+pub mod adc;
+pub mod bzip2;
 mod huffman;
+pub mod lzfse;
 pub mod lznt1;
 pub mod lzx;
 pub mod wof;
 pub mod xpress;
+pub mod xz;
 
 /// Why a compressed stream could not be decoded.
 #[derive(Debug, Clone, PartialEq, Eq)]
