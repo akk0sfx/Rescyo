@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **Desktop interface** (`rescyo-gui`): the design document's layout — sources and sessions in the sidebar, the scan with a live sector strip, the folder tree, the file table with assembly and integrity, the inspector, recovery through the same preflight as the CLI. Built with Slint: software rendering on Windows (7 included) and Linux, so it works without a GPU and over RDP; on macOS the window uses the system material (Liquid Glass on macOS 26, vibrancy before it) unless Reduce transparency is on. Native file dialogs with a built-in fallback, light and dark themes, five languages with Noto CJK fonts chosen by language (`cargo xtask fonts`).
+
 ## [0.3.0] — 2026-10-12
 
 Third alpha: open the disk images people actually have, find files by their structure when nothing else describes them, read ext4, and work in a terminal.
