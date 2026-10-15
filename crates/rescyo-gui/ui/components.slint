@@ -1,0 +1,177 @@
+// Rescyo design-system components (docs/design/README.md). Colours, radii, spacing and type come
+// only from Tokens; nothing here uses a literal colour except white text on the primary action.
+
+import { Tokens } from "tokens.slint";
+
+// How the window is dressed on this platform: macOS uses pill controls and leaves room for the
+// traffic lights; Windows and Linux use squarer controls (design: "Interface · Windows").
+export global Look {
+    in property <bool> mac: false;
+    // The frame (sidebar, toolbar) shows a system material behind it (Liquid Glass, Mica).
+    in property <bool> glass: false;
+    out property <length> pill: mac ? 999px : 6px;
+}
+
+export struct Fact {
+    label: string,
+    value: string,
+}
+
+// Assembly chip kinds: 0 neutral (FAT chain, MFT…), 1 mirror FAT, 2 contiguous guess, 3 carved.
+export component Chip inherits Rectangle {
+    in property <string> label;
+    in property <int> kind: 0;
+    property <color> c: kind == 1 ? Tokens.info : kind == 2 ? Tokens.warn : kind == 3 ? Tokens.text-3 : Tokens.text-2;
+    height: 18px;
+    width: t.preferred-width + 16px;
+    border-radius: Tokens.radius-chip;
+    border-width: 1px;
+    border-color: kind == 1 || kind == 2 ? c.with-alpha(0.45) : Tokens.line;
+    background: kind == 1 || kind == 2 ? c.with-alpha(0.10) : transparent;
+    accessible-role: text;
+    accessible-label: label;
+    t := Text {
+        text: label;
+        color: c;
+        font-family: Tokens.font-data;
+        font-size: 10.5px;
+        font-weight: 500;
+        letter-spacing: 0.08 * 10.5px;
+        font-italic: kind == 3;
+    }
+}
+
+// Integrity: glyph, colour and word together, so it reads in greyscale and for colour-blind users.
+// 0 intact (●), 1 partial (◐), 2 damaged (✕), 3 unverified (○). The glyphs are drawn as shapes,
+// so they look the same with every font on every platform.
+export component IntegrityGlyph inherits Rectangle {
+    in property <int> state: 3;
+    property <color> c: state == 0 ? Tokens.ok : state == 1 ? Tokens.warn : state == 2 ? Tokens.bad : Tokens.text-3;
+    width: 10px;
+    height: 10px;
+    if state == 0: Rectangle { width: 8px; height: 8px; border-radius: 4px; background: c; }
+    if state == 1: Rectangle {
+        width: 8px; height: 8px; border-radius: 4px; border-width: 1.2px; border-color: c; clip: true;
+        Rectangle { x: 0; width: 4px; height: parent.height; background: c; }
+    }
+    if state == 2: Path {
+        width: 9px; height: 9px; viewbox-width: 9; viewbox-height: 9;
+        stroke: c; stroke-width: 1.6px; fill: transparent;
+        commands: "M1 1L8 8M8 1L1 8";
+    }
+    if state == 3: Rectangle { width: 8px; height: 8px; border-radius: 4px; border-width: 1.2px; border-color: c; }
+}
+
+export component Integrity inherits HorizontalLayout {
+    in property <int> state: 3;
+    in property <string> word;
+    spacing: 6px;
+    alignment: start;
+    VerticalLayout { alignment: center; IntegrityGlyph { state: state; } }
+    Text {
+        text: word;
+        color: Tokens.text-2;
+        font-family: Tokens.font-text;
+        font-size: 12.5px;
+        vertical-alignment: center;
+    }
+}
+
+// Upper-case mono label, as the design's `.eyebrow`.
+export component Eyebrow inherits Text {
+    in property <string> label;
+    in property <bool> strong: false;
+    in property <bool> on: false;
+    text: label.to-uppercase();
+    font-family: Tokens.font-data;
+    font-size: Tokens.type-eyebrow;
+    letter-spacing: Tokens.eyebrow-tracking * 11px;
+    color: on ? Tokens.rescue : strong ? Tokens.text : Tokens.text-3;
+    font-weight: strong || on ? 600 : 400;
+}
+
+// The Bad-sector map as one bar: 0 not read yet, 1 readable, 2 unreadable; plus the read head.
+export component SectorStrip inherits Rectangle {
+    in property <[int]> cells;
+    in property <float> head: -1;
+    height: 10px;
+    border-radius: 3px;
+    clip: true;
+    background: Tokens.ink-3;
+    accessible-role: progress-indicator;
+    for s[i] in cells: Rectangle {
+        x: parent.width * i / cells.length;
+        width: parent.width / cells.length + 0.5px;
+        height: parent.height;
+        background: s == 2 ? Tokens.bad : s == 1 ? Tokens.ok.mix(Tokens.ink-2, 0.55) : Tokens.ink-3;
+    }
+    if head >= 0: Rectangle {
+        x: parent.width * head;
+        width: 1.5px;
+        background: Tokens.rescue;
+    }
+}
+
+// Buttons: one primary (rescue orange) per screen; secondary on ink-2.
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 34px;
+    width: label.preferred-width + 36px;
+    border-radius: Look.pill;
+    background: !enabled ? Tokens.ink-3 : primary ? (touch.has-hover ? Tokens.rescue-hi : Tokens.rescue) : (touch.has-hover ? Tokens.ink-3 : Tokens.ink-2);
+    border-width: primary ? 0 : 1px;
+    border-color: Tokens.line;
+    // Only the enabled primary action casts its soft orange shadow.
+    drop-shadow-blur: primary && enabled ? 18px : 0;
+    drop-shadow-offset-y: primary && enabled ? 6px : 0;
+    drop-shadow-color: primary && enabled ? Tokens.rescue.with-alpha(0.35) : transparent;
+    accessible-role: button;
+    accessible-label: text;
+    accessible-enabled: enabled;
+    accessible-action-default => { if enabled { clicked(); } }
+    forward-focus: fs;
+    fs := FocusScope {
+        key-pressed(e) => {
+            if enabled && (e.text == " " || e.text == "\n") { clicked(); return accept; }
+            reject
+        }
+    }
+    label := Text {
+        text: root.text;
+        color: !enabled ? Tokens.text-3 : primary ? #ffffff : Tokens.text;
+        font-family: Tokens.font-text;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    touch := TouchArea {
+        mouse-cursor: enabled ? pointer : default;
+        clicked => { if enabled { root.clicked(); } }
+    }
+    // Focus ring in the accent colour.
+    if fs.has-focus: Rectangle {
+        border-width: 2px;
+        border-color: Tokens.rescue;
+        border-radius: root.border-radius + 2px;
+        x: -3px; y: -3px;
+        width: parent.width + 6px; height: parent.height + 6px;
+    }
+}
+
+// Sidebar icons: 0 removable drive, 1 system disk, 2 image file, 3 session.
+export component SourceIcon inherits Path {
+    in property <int> kind;
+    width: 20px;
+    height: 20px;
+    stroke: Tokens.text-2;
+    stroke-width: 1.4px;
+    fill: transparent;
+    viewbox-width: 20;
+    viewbox-height: 20;
+    commands: kind == 2 ? "M5 2.5h7l3.5 3.5v11.5h-10.5z M12 2.5v3.5h3.5"
+        : kind == 3 ? "M3.5 5c0-1.4 2.9-2.5 6.5-2.5s6.5 1.1 6.5 2.5v10c0 1.4-2.9 2.5-6.5 2.5s-6.5-1.1-6.5-2.5z M3.5 5c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5 M3.5 10c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5"
+        : kind == 1 ? "M2.5 6.5h15v7h-15z M5 10h1.5 M12 10h3"
+        : "M6.5 2.5h7v4h1.5v11h-10v-11h1.5z M8.5 4.5v2 M11.5 4.5v2";
+}

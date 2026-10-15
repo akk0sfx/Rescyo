@@ -235,3 +235,38 @@ impl Model {
             .count() as u64
     }
 }
+
+/// How a file's bytes were found, as the design system's chip: label and kind
+/// (0 neutral, 1 mirror FAT, 2 a guess, 3 carved).
+pub fn assembly_chip(a: rescyo_fs::AssemblyMethod) -> (&'static str, u8) {
+    use rescyo_fs::AssemblyMethod as A;
+    match a {
+        A::FatChain => ("FAT CHAIN", 0),
+        A::FatChainMirror => ("MIRROR FAT", 1),
+        A::ExfatBitmapContiguous => ("EXFAT", 0),
+        A::MftRunlist => ("MFT", 0),
+        A::Ext4Extents | A::HfsExtents => ("EXTENTS", 0),
+        A::BlockMap => ("BLOCK MAP", 0),
+        A::ContiguousAssumed => ("CONTIGUOUS?", 2),
+        A::Carved => ("CARVED", 3),
+    }
+}
+
+/// The Bad-sector map of a `size`-byte Source as `n` strip cells: 0 not read, 1 readable,
+/// 2 unreadable; `read_until` marks how far a running scan has come.
+pub fn strip_cells(size: u64, bad: &[std::ops::Range<u64>], read_until: Option<u64>, n: u64) -> Vec<i32> {
+    let size = size.max(1);
+    (0..n)
+        .map(|i| {
+            let a = i * size / n;
+            let b = ((i + 1) * size / n).max(a + 1);
+            if bad.iter().any(|r| r.start < b && a < r.end) {
+                2
+            } else if read_until.is_none_or(|h| a < h) {
+                1
+            } else {
+                0
+            }
+        })
+        .collect()
+}

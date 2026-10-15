@@ -172,3 +172,57 @@ tui-help =
     s               named streams  t          choose the target folder
     r               recover        q or Esc   quit
 tui-keys =  Tab panes · Space mark · / search · d deleted · t target · r recover · ? help · q quit
+
+## Desktop interface
+gui-sources = Sources
+gui-images = Images
+gui-sessions = Sessions
+gui-no-target = Choose a folder on another disk
+gui-image-first = Image the disk first
+gui-empty-title = Bring it back.
+gui-empty-hint = Choose a disk, an image or a session on the left. Rescyo only reads it.
+gui-open-image = Open image…
+gui-open-session = Open session…
+gui-deep = Deep scan: read the whole disk for lost volumes and folders
+gui-carve = Also find files by their signatures
+gui-session-file = Session file
+gui-change = Change…
+gui-scan = Scan
+gui-stop = Stop
+gui-ok = OK
+gui-cancel = Cancel
+gui-back = Continue
+gui-recover-button = { $count ->
+        [0] Recover
+        [one] Recover 1 file
+       *[other] Recover { $count } files
+    }
+gui-removable = removable
+gui-protected = system disk · protected
+gui-fact-path = Path
+gui-fact-size = Size
+gui-fact-serial = Serial
+gui-fact-folders = { $count } folders
+gui-fact-files = { $count } files
+gui-system-disk = This is the disk the system runs from. Rescyo only reads it, but nothing can be recovered onto it, and files deleted from it are being overwritten all the time: recover from a different computer if you can.
+gui-sheet-target = Recover to folder
+gui-sheet-target-hint = A folder on a different disk. It is created if needed; nothing in it is overwritten.
+gui-sheet-image = Open a disk image
+gui-sheet-image-hint = Raw, VHD, VHDX, VMDK, qcow2 or E01. Enter the full path.
+gui-sheet-session = Open a session
+gui-sheet-session-hint = A .rescyo file made by an earlier scan.
+gui-sheet-session-file = Session file
+gui-sheet-session-hint-new = Where to save what the scan finds.
+gui-sheet-session-file-hint = Where to save what the scan finds. Choose a disk other than the one being scanned.
+gui-sheet-image-out = Image file
+gui-sheet-image-out-hint = A file on a different disk, with room for the whole disk. A map next to it lets the copy resume.
+gui-scanning = Scanning { $source }
+gui-imaging = Imaging { $source }
+gui-scan-image = Scan the image
+gui-note-bad = Unreadable sectors.
+gui-note-lost-title = Lost folders.
+gui-insp-path = Path
+gui-recovering = Recovering { $count } files
+gui-recovered = { $files } files recovered · { $size }
+gui-sum-failed = Could not be written
+gui-search = Search { $count } files…

@@ -31,6 +31,7 @@ rescyo-ext4 = { path = "crates/rescyo-ext4" }
 rescyo-hfs = { path = "crates/rescyo-hfs" }
 rescyo-design = { path = "crates/rescyo-design" }
 rescyo-tui = { path = "crates/rescyo-tui" }
+rescyo-gui = { path = "crates/rescyo-gui" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

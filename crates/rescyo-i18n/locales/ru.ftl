@@ -182,3 +182,58 @@ tui-help =
     s                именованные потоки  t        выбрать папку для восстановления
     r                восстановить      q или Esc  выход
 tui-keys =  Tab панели · Пробел отметить · / поиск · d удалённые · t папка · r восстановить · ? справка · q выход
+
+## Desktop interface
+gui-sources = Источники
+gui-images = Образы
+gui-sessions = Сессии
+gui-no-target = Выберите папку на другом диске
+gui-image-first = Сначала снять образ
+gui-empty-title = Вернём всё.
+gui-empty-hint = Выберите слева диск, образ или сессию. Rescyo только читает.
+gui-open-image = Открыть образ…
+gui-open-session = Открыть сессию…
+gui-deep = Глубокое сканирование: прочитать весь диск в поисках потерянных томов и папок
+gui-carve = Также искать файлы по сигнатурам
+gui-session-file = Файл сессии
+gui-change = Изменить…
+gui-scan = Сканировать
+gui-stop = Остановить
+gui-ok = OK
+gui-cancel = Отмена
+gui-back = Продолжить
+gui-recover-button = { $count ->
+        [0] Восстановить
+        [one] Восстановить { $count } файл
+        [few] Восстановить { $count } файла
+       *[many] Восстановить { $count } файлов
+    }
+gui-removable = съёмный
+gui-protected = системный диск · защищён
+gui-fact-path = Путь
+gui-fact-size = Размер
+gui-fact-serial = Серийный номер
+gui-fact-folders = папок: { $count }
+gui-fact-files = файлов: { $count }
+gui-system-disk = С этого диска работает система. Rescyo его только читает, но восстанавливать на него нельзя, а удалённые с него файлы всё время перезаписываются: по возможности восстанавливайте с другого компьютера.
+gui-sheet-target = Папка для восстановления
+gui-sheet-target-hint = Папка на другом диске. Будет создана при необходимости; ничего в ней не перезаписывается.
+gui-sheet-image = Открыть образ диска
+gui-sheet-image-hint = Raw, VHD, VHDX, VMDK, qcow2 или E01. Введите полный путь.
+gui-sheet-session = Открыть сессию
+gui-sheet-session-hint = Файл .rescyo от прежнего сканирования.
+gui-sheet-session-file = Файл сессии
+gui-sheet-session-hint-new = Куда сохранить найденное.
+gui-sheet-session-file-hint = Куда сохранить найденное. Выберите диск, отличный от сканируемого.
+gui-sheet-image-out = Файл образа
+gui-sheet-image-out-hint = Файл на другом диске, где хватит места на весь диск. Карта рядом с ним позволит продолжить копирование.
+gui-scanning = Сканирую { $source }
+gui-imaging = Снимаю образ { $source }
+gui-scan-image = Сканировать образ
+gui-note-bad = Нечитаемые секторы.
+gui-note-lost-title = Потерянные папки.
+gui-insp-path = Путь
+gui-recovering = Восстанавливаю файлов: { $count }
+gui-recovered = Восстановлено файлов: { $files } · { $size }
+gui-sum-failed = Не удалось записать
+gui-search = Поиск среди { $count } файлов…

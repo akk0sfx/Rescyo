@@ -139,3 +139,56 @@ tui-help =
     s                  名前付きストリーム  t       復旧先フォルダーを選択
     r                  復旧            q / Esc     終了
 tui-keys =  Tab パネル · Space マーク · / 検索 · d 削除済み · t 復旧先 · r 復旧 · ? ヘルプ · q 終了
+
+## Desktop interface
+gui-sources = ソース
+gui-images = イメージ
+gui-sessions = セッション
+gui-no-target = 別のディスクのフォルダーを選択
+gui-image-first = 先にディスクをイメージ化
+gui-empty-title = 取り戻そう。
+gui-empty-hint = 左でディスク、イメージ、またはセッションを選択してください。Rescyo は読み取りのみ行います。
+gui-open-image = イメージを開く…
+gui-open-session = セッションを開く…
+gui-deep = ディープスキャン：ディスク全体を読み、失われたボリュームとフォルダーを探す
+gui-carve = シグネチャでもファイルを探す
+gui-session-file = セッションファイル
+gui-change = 変更…
+gui-scan = スキャン
+gui-stop = 停止
+gui-ok = OK
+gui-cancel = キャンセル
+gui-back = 続ける
+gui-recover-button = { $count ->
+        [0] 復旧
+       *[other] { $count } 個のファイルを復旧
+    }
+gui-removable = リムーバブル
+gui-protected = システムディスク · 保護
+gui-fact-path = パス
+gui-fact-size = サイズ
+gui-fact-serial = シリアル
+gui-fact-folders = フォルダー { $count } 個
+gui-fact-files = ファイル { $count } 個
+gui-system-disk = これはシステムが動作しているディスクです。Rescyo は読み取りのみ行いますが、このディスクには復旧できません。また削除されたファイルは常に上書きされています。可能なら別のコンピューターから復旧してください。
+gui-sheet-target = 復旧先フォルダー
+gui-sheet-target-hint = 別のディスク上のフォルダー。必要なら作成され、中身は上書きされません。
+gui-sheet-image = ディスクイメージを開く
+gui-sheet-image-hint = Raw、VHD、VHDX、VMDK、qcow2、E01。フルパスを入力してください。
+gui-sheet-session = セッションを開く
+gui-sheet-session-hint = 以前のスキャンで作成した .rescyo ファイル。
+gui-sheet-session-file = セッションファイル
+gui-sheet-session-hint-new = スキャン結果の保存先。
+gui-sheet-session-file-hint = スキャン結果の保存先。スキャンするディスクとは別のディスクを選んでください。
+gui-sheet-image-out = イメージファイル
+gui-sheet-image-out-hint = ディスク全体が入る空きのある、別のディスク上のファイル。横のマップでコピーを再開できます。
+gui-scanning = { $source } をスキャン中
+gui-imaging = { $source } をイメージ化中
+gui-scan-image = イメージをスキャン
+gui-note-bad = 読み取れないセクタがあります。
+gui-note-lost-title = 失われたフォルダー。
+gui-insp-path = パス
+gui-recovering = { $count } 個のファイルを復旧中
+gui-recovered = { $files } 個のファイルを復旧 · { $size }
+gui-sum-failed = 書き込めなかったファイル
+gui-search = { $count } 個のファイルを検索…

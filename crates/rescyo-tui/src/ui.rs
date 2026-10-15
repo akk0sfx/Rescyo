@@ -14,17 +14,14 @@ use crate::app::{App, Focus, Mode, Preflight, Step};
 
 /// How a file's bytes were found, as a design-system chip: (label, kind).
 pub fn chip(a: AssemblyMethod) -> (&'static str, ChipKind) {
-    match a {
-        AssemblyMethod::FatChain => ("FAT CHAIN", ChipKind::Neutral),
-        AssemblyMethod::FatChainMirror => ("MIRROR FAT", ChipKind::Mirror),
-        AssemblyMethod::ExfatBitmapContiguous => ("EXFAT", ChipKind::Neutral),
-        AssemblyMethod::MftRunlist => ("MFT", ChipKind::Neutral),
-        AssemblyMethod::Ext4Extents => ("EXTENTS", ChipKind::Neutral),
-        AssemblyMethod::BlockMap => ("BLOCK MAP", ChipKind::Neutral),
-        AssemblyMethod::HfsExtents => ("EXTENTS", ChipKind::Neutral),
-        AssemblyMethod::ContiguousAssumed => ("CONTIGUOUS?", ChipKind::Guess),
-        AssemblyMethod::Carved => ("CARVED", ChipKind::Carved),
-    }
+    let (label, kind) = rescyo_core::browse::assembly_chip(a);
+    let kind = match kind {
+        1 => ChipKind::Mirror,
+        2 => ChipKind::Guess,
+        3 => ChipKind::Carved,
+        _ => ChipKind::Neutral,
+    };
+    (label, kind)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
