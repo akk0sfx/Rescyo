@@ -21,6 +21,7 @@ pub fn chip(a: AssemblyMethod) -> (&'static str, ChipKind) {
         AssemblyMethod::MftRunlist => ("MFT", ChipKind::Neutral),
         AssemblyMethod::Ext4Extents => ("EXTENTS", ChipKind::Neutral),
         AssemblyMethod::BlockMap => ("BLOCK MAP", ChipKind::Neutral),
+        AssemblyMethod::HfsExtents => ("EXTENTS", ChipKind::Neutral),
         AssemblyMethod::ContiguousAssumed => ("CONTIGUOUS?", ChipKind::Guess),
         AssemblyMethod::Carved => ("CARVED", ChipKind::Carved),
     }

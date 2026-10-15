@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- **HFS+ and HFSX (experimental)**: volume header or its backup, the catalog B-tree, data forks with the extents overflow file, decomposed names composed; deleted catalog records are looked for in node free space (macOS wipes them, so on macOS-written volumes deleted files come back by carving). Partition search finds HFS+ volumes by either header. Tested on images made by macOS itself (`corpus/apple`).
+
 ## [0.3.0] — 2026-10-12
 
 Third alpha: open the disk images people actually have, find files by their structure when nothing else describes them, read ext4, and work in a terminal.
